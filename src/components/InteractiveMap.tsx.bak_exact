@@ -1,0 +1,2317 @@
+import React from 'react';
+import type { Plot } from '../data/plots';
+
+interface InteractiveMapProps {
+  plots: Plot[];
+  onSelectPlot: (plot: Plot) => void;
+  selectedPlot: Plot | null;
+}
+
+export const InteractiveMap: React.FC<InteractiveMapProps> = ({
+  plots,
+  onSelectPlot,
+  selectedPlot
+}) => {
+
+  const adjustRow1X = (plotId: string, x: number): number => {
+    const numId = parseInt(plotId, 10);
+    const isR7Block = (numId >= 145 && numId <= 157);
+    const isColumn1 = (plotId === 'EB' || plotId === '167' || plotId === '166');
+    const isColumn2 = (plotId === 'LB' || plotId === '162' || plotId === '163' || plotId === '164' || plotId === '165');
+    const isLeftPlots = (plotId === '168' || plotId === '169');
+
+    if (isLeftPlots) {
+      return 520 - (520 - x) * 0.8;
+    } else if (isColumn1 || isColumn2) {
+      return 640 + (x - 640) * (90 / 130);
+    } else if (isR7Block) {
+      return 980 + (x - 980) * 0.75;
+    }
+    return x;
+  };
+
+  const adjustRow1Points = (plotId: string, pointsStr: string): string => {
+    return pointsStr.trim().split(/\s+/).map(p => {
+      const [xStr, yStr] = p.split(',');
+      const x = Number(xStr);
+      const y = Number(yStr);
+      if (isNaN(x) || isNaN(y)) return p;
+      return `${adjustRow1X(plotId, x).toFixed(2)},${y}`;
+    }).join(' ');
+  };
+
+  // Helper to compute plot coordinates dynamically matching the PDF layout structure
+  const getPlotCoords = (plotId: string): { x: number; y: number; w: number; h: number } | null => {
+    const getBaseCoords = (): { x: number; y: number; w: number; h: number } | null => {
+      const numId = parseInt(plotId, 10);
+
+      // Block L1 (Plots 1 to 7)
+      if (numId === 1) {
+        return { x: 230.7, y: 840, w: 49.3, h: 90 };
+      }
+      if (numId >= 2 && numId <= 7) {
+        return { x: 280 + (numId - 2) * 40, y: 840, w: 40, h: 90 };
+      }
+      // Block R1 (Plots 8, 9)
+      if (numId === 8) return { x: 640, y: 840, w: 46, h: 55.3 };
+      if (numId === 9) return { x: 686, y: 840, w: 35.7, h: 54 };
+
+      // Block R2 (Plots 10 to 15)
+      if (numId === 15) return { x: 640, y: 660, w: 40, h: 40 };
+      if (numId === 14) return { x: 680, y: 660, w: 40, h: 40 };
+      if (numId === 13) return { x: 720, y: 660, w: 40, h: 40 };
+      if (numId === 12) return { x: 760, y: 660, w: 30.7, h: 40 };
+      if (numId === 11) return { x: 790.7, y: 660, w: 30.7, h: 40 };
+      if (numId === 10) return { x: 821.3, y: 660, w: 30.7, h: 40 };
+
+      // Block L2 (Plots 16 to 31)
+      if (numId >= 16 && numId <= 21) {
+        return { x: 480 - (numId - 16) * 40, y: 660, w: 40, h: 40 };
+      }
+      if (numId === 22) {
+        return { x: 248, y: 660, w: 32, h: 40 };
+      }
+      if (numId === 23) {
+        return { x: 220, y: 660, w: 28, h: 40 };
+      }
+      if (numId === 24) {
+        return { x: 211.7, y: 620, w: 28.3, h: 40 };
+      }
+      if (numId === 25) {
+        return { x: 240, y: 620, w: 40, h: 40 };
+      }
+      if (numId >= 26 && numId <= 31) {
+        return { x: 280 + (numId - 26) * 40, y: 620, w: 40, h: 40 };
+      }
+
+      // Block R3 (Plots 32 to 38)
+      if (numId === 32) return { x: 640, y: 620, w: 40, h: 40 };
+      if (numId === 33) return { x: 680, y: 620, w: 40, h: 40 };
+      if (numId === 34) return { x: 720, y: 620, w: 40, h: 40 };
+      if (numId === 35) return { x: 760, y: 620, w: 30.7, h: 40 };
+      if (numId === 36) return { x: 790.7, y: 620, w: 30.7, h: 40 };
+      if (numId === 37) return { x: 821.3, y: 620, w: 30.7, h: 40 };
+      if (numId === 38) return { x: 852, y: 620, w: 86, h: 33.3 };
+
+      // Block L3 (Plots 47 to 62 & 54)
+      if (numId >= 47 && numId <= 52) {
+        return { x: 480 - (numId - 47) * 40, y: 510, w: 40, h: 40 };
+      }
+      if (numId === 53) {
+        return { x: 248, y: 510, w: 32, h: 40 };
+      }
+      if (numId === 54) {
+        return { x: 207.3, y: 510, w: 40.7, h: 40 };
+      }
+      if (numId === 55) {
+        return { x: 198.3, y: 470, w: 49.7, h: 40 };
+      }
+      if (numId === 56) {
+        return { x: 248, y: 470, w: 32, h: 40 };
+      }
+      if (numId >= 57 && numId <= 62) {
+        return { x: 280 + (numId - 57) * 40, y: 470, w: 40, h: 40 };
+      }
+
+      // Block R4 (Plots 39 to 46, 63 to 71)
+      if (numId >= 41 && numId <= 46) {
+        return { x: 640 + (46 - numId) * 40, y: 510, w: 40, h: 40 };
+      }
+      if (numId === 40) {
+        return { x: 880, y: 510, w: 36, h: 40 };
+      }
+      if (numId === 39) {
+        return { x: 916, y: 510, w: 102.3, h: 40 };
+      }
+      if (numId >= 63 && numId <= 70) {
+        return { x: 640 + (numId - 63) * 40, y: 470, w: 40, h: 40 };
+      }
+      if (numId === 71) {
+        return { x: 960, y: 470, w: 45.3, h: 40 };
+      }
+
+      // Block L4 (Plots 82 to 93)
+      if (numId >= 82 && numId <= 86) {
+        return { x: 480 - (numId - 82) * 40, y: 370, w: 40, h: 40 };
+      }
+      if (numId === 87) {
+        return { x: 280, y: 370, w: 40, h: 40 };
+      }
+      if (numId === 88) {
+        return { x: 237.3, y: 370, w: 42.7, h: 40 };
+      }
+      if (numId === 89) {
+        return { x: 179, y: 370, w: 58.3, h: 40 };
+      }
+      if (numId === 90) {
+        return { x: 320, y: 330, w: 80, h: 40 };
+      }
+      if (numId >= 91 && numId <= 93) {
+        return { x: 400 + (numId - 91) * 40, y: 330, w: 40, h: 40 };
+      }
+
+      // Block R5 (Plots 72 to 81, 94 to 104)
+      if (numId >= 73 && numId <= 81) {
+        return { x: 640 + (81 - numId) * 40, y: 370, w: 40, h: 40 };
+      }
+      if (numId === 72) {
+        return { x: 1000, y: 370, w: 54, h: 40 };
+      }
+      if (numId >= 94 && numId <= 103) {
+        return { x: 640 + (numId - 94) * 40, y: 330, w: 40, h: 40 };
+      }
+      if (numId === 104) {
+        return { x: 1040, y: 330, w: 46.7, h: 40 };
+      }
+
+      // Block L5 (Plots 117 to 122)
+      if (numId === 117) return { x: 480, y: 250, w: 40, h: 40 };
+      if (numId === 118) return { x: 440, y: 250, w: 40, h: 40 };
+      if (numId === 119) return { x: 370, y: 250, w: 70, h: 40 };
+      if (numId === 120) return { x: 386.7, y: 210, w: 53.3, h: 40 };
+      if (numId === 121) return { x: 440, y: 210, w: 40, h: 40 };
+      if (numId === 122) return { x: 480, y: 210, w: 40, h: 40 };
+
+      // Block R6 (Plots 106 to 116 & 123 to 144)
+      if (numId >= 107 && numId <= 116) {
+        return { x: 640 + (116 - numId) * 40, y: 250, w: 40, h: 40 };
+      }
+      if (numId === 106) {
+        return { x: 1040, y: 250, w: 53, h: 40 };
+      }
+      if (numId === 123) {
+        return { x: 640, y: 210, w: 40, h: 40 };
+      }
+      if (numId >= 124 && numId <= 142) {
+        return { x: 680 + (numId - 124) * 20, y: 210, w: 20, h: 40 };
+      }
+      if (numId === 143) {
+        return { x: 1060, y: 210, w: 18, h: 40 };
+      }
+      if (numId === 144) {
+        return { x: 1078, y: 210, w: 15, h: 40 };
+      }
+
+      // Block L6 (Top Left, Plots 162 to 169 & Utilities)
+      if (plotId === '169') return { x: 350, y: 100, w: 90, h: 80 };
+      if (plotId === '168') return { x: 440, y: 40, w: 80, h: 140 };
+
+      // Middle Block Column 1 (EB, 167, 166)
+      if (plotId === 'EB') return { x: 640, y: -69, w: 130, h: 89.5 };
+      if (plotId === '167') return { x: 640, y: 5.5, w: 130, h: 114.5 };
+      if (plotId === '166') return { x: 640, y: 120, w: 130, h: 60 };
+
+      // Middle Block Column 2 (LB, 162, 163, 164, 165)
+      if (plotId === 'LB') return { x: 770, y: -69, w: 130, h: 27.5 };
+      if (plotId === '162') return { x: 770, y: -41.5, w: 130, h: 30 };
+      if (plotId === '163') return { x: 770, y: -11.5, w: 130, h: 30 };
+      if (plotId === '164') return { x: 770, y: 18.5, w: 130, h: 30 };
+      if (plotId === '165') return { x: 770, y: 48.5, w: 130, h: 131.5 };
+
+      // Block R7 (Top Right, Plots 145 to 157)
+      if (plotId === '157') return { x: 980, y: 48, w: 23, h: 90 };
+      if (plotId === '156') return { x: 980, y: 138, w: 32.5, h: 42 };
+      if (plotId === '155') return { x: 1003, y: 102.5, w: 53, h: 77.5 };
+      if (plotId === '154') return { x: 1052.5, y: 106, w: 44, h: 74 };
+      if (plotId === '153') return { x: 1092.5, y: 106, w: 44, h: 74 };
+      if (plotId === '152') return { x: 1132.5, y: 104, w: 44, h: 76 };
+      if (plotId === '151') return { x: 1172.5, y: 104, w: 44, h: 76 };
+      if (plotId === '150') return { x: 1212.5, y: 102, w: 44, h: 78 };
+      if (plotId === '149') return { x: 1252.5, y: 99, w: 44.5, h: 81 };
+      if (plotId === '148') return { x: 1292.5, y: 99, w: 43.5, h: 81 };
+      if (plotId === '147') return { x: 1332.5, y: 100, w: 42.5, h: 80 };
+      if (plotId === '146') return { x: 1372.5, y: 102.5, w: 35.5, h: 77.5 };
+      if (plotId === '145') return { x: 1405, y: 104.5, w: 33, h: 75.5 };
+
+      return null;
+    };
+
+    const coords = getBaseCoords();
+    if (!coords) return null;
+
+    const numId = parseInt(plotId, 10);
+    const isR7Block = numId >= 145 && numId <= 157;
+    const isR6Block = (numId >= 106 && numId <= 116) || (numId >= 123 && numId <= 144);
+    const isR4R5Block = (numId >= 39 && numId <= 46) || (numId >= 63 && numId <= 71) || (numId >= 72 && numId <= 81) || (numId >= 94 && numId <= 104);
+
+    const isColumn1 = (plotId === 'EB' || plotId === '167' || plotId === '166');
+    const isColumn2 = (plotId === 'LB' || plotId === '162' || plotId === '163' || plotId === '164' || plotId === '165');
+    const isLeftPlots = (plotId === '168' || plotId === '169');
+
+    // Apply X scaling:
+    let x = coords.x;
+    let w = coords.w;
+    if (isLeftPlots) {
+      x = 520 - (520 - x) * 0.8;
+      w = w * 0.8;
+    } else if (isColumn1 || isColumn2) {
+      x = 640 + (x - 640) * (90 / 130);
+      w = w * (90 / 130);
+    } else if (isR7Block) {
+      x = 980 + (x - 980) * 0.75;
+      w = w * 0.75;
+    }
+
+    // Apply X shift:
+    if (x >= 640) {
+      x -= 80; // shift all right-side plots left by 80px (for 33'0" road narrowing from 120px to 40px)
+    }
+
+    // Shift right-side plots next to middle vertical road
+    if (coords.x >= 980 && (isR4R5Block || isR6Block)) {
+      x -= 40; // Shift left by an additional 40px (total 120px shift, due to middle vertical road narrowing from 80px to 40px)
+    }
+    if (isR7Block) {
+      x -= 120; // Shift left by an additional 120px (total 200px shift)
+    }
+
+    // Apply Y shift:
+    let y = coords.y;
+    let yOffset = 200; // default for Row 1
+
+    const isRow6 = (numId >= 1 && numId <= 9);
+    const isRow5 = (numId >= 16 && numId <= 38);
+    const isRow4 = (numId >= 47 && numId <= 62) || (numId >= 39 && numId <= 46) || (numId >= 63 && numId <= 71);
+    const isRow3 = (numId >= 82 && numId <= 93) || (numId >= 72 && numId <= 81) || (numId >= 94 && numId <= 104);
+    const isRow2 = (numId >= 117 && numId <= 122) || (numId >= 106 && numId <= 116) || (numId >= 123 && numId <= 144);
+
+    if (isRow6) {
+      yOffset = 60;
+    } else if (isRow5) {
+      yOffset = 160;
+    } else if (isRow4) {
+      yOffset = 190;
+    } else if (isRow3) {
+      yOffset = 210;
+    } else if (isRow2) {
+      yOffset = 210;
+    }
+
+    return { x, y: y + yOffset, w, h: coords.h };
+  };
+
+  // Helper to get exact color of plot as shown in physical layout sheet
+  const getPlotColor = (plotId: string): string => {
+    const numId = parseInt(plotId, 10);
+
+    if (plotId === 'EB') return '#90caf9'; // Light Blue
+    if (plotId === 'LB') return '#a5d6a7'; // Light Green
+
+    // Block L1 (1-7)
+    if (numId === 1 || numId === 7) return '#f8bbd0'; // Pink
+    if (numId >= 2 && numId <= 6) return '#fff176'; // Yellow
+
+    // Block R1 (8-9) -> Yellow
+    if (numId === 8 || numId === 9) return '#fff176';
+
+    // Block R2 (10-15) -> Pink
+    if (numId >= 10 && numId <= 15) return '#f8bbd0';
+
+    // Block L2 (16-31)
+    if (numId >= 16 && numId <= 24) return '#f8bbd0'; // Pink
+    if (numId >= 25 && numId <= 30) return '#fff176'; // Yellow
+    if (numId === 31) return '#f8bbd0'; // Pink
+
+    // Block R3 (32-38) -> Yellow
+    if (numId >= 32 && numId <= 38) return '#fff176';
+
+    // Block R4 (39-46 & 63-71)
+    if (numId >= 39 && numId <= 46) return '#ffb74d'; // Orange
+    if (numId >= 63 && numId <= 71) return '#fff176'; // Yellow
+
+    // Block L3 (47-53, 54 & 55-62)
+    if (numId >= 47 && numId <= 54) return '#f28b82'; // Red-pink
+    if (numId >= 55 && numId <= 62) return '#fff176'; // Yellow
+
+    // Block L4 (82-89 & 90-93)
+    if (numId >= 82 && numId <= 89) return '#f8bbd0'; // Pink
+    if (numId >= 90 && numId <= 93) return '#fff176'; // Yellow
+
+    // Block R5 (72-81 & 94-104)
+    if (numId >= 72 && numId <= 81) return '#f8bbd0'; // Pink
+    if (numId >= 94 && numId <= 104) return '#fff176'; // Yellow
+
+    // Block L5 (117-118 & 119-122)
+    if (numId === 117 || numId === 118) return '#f28b82'; // Red-pink
+    if (numId >= 119 && numId <= 122) return '#fff176'; // Yellow
+
+    // Block R6 (106-116 & 123-144)
+    if (numId >= 106 && numId <= 116) return '#f8bbd0'; // Pink
+    if (numId >= 123 && numId <= 144) return '#fff176'; // Yellow
+
+    // Block L6 (162-166 & 167-169)
+    if (numId >= 162 && numId <= 166) return '#f28b82'; // Red-pink
+    if (numId >= 167 && numId <= 169) return '#ffb74d'; // Orange
+
+    // Block R7 (145-157) -> Red/Pink
+    if (numId >= 145 && numId <= 157) return '#f28b82';
+
+    return '#fff176'; // default fallback
+  };
+
+  return (
+    <div className="w-full h-full overflow-hidden select-none flex items-center justify-center bg-[#e6f2ec]">
+      <svg
+        viewBox="0 0 1540 1180"
+        width="1540"
+        height="1180"
+        style={{
+          maxWidth: '100%',
+          maxHeight: '100%',
+          width: 'auto',
+          height: 'auto',
+          display: 'block',
+        }}
+      >
+        {/* Grid and Hatching Patterns */}
+        <defs>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(0,0,0,0.03)" strokeWidth="1" />
+          </pattern>
+          <pattern id="booked-pattern" width="8" height="8" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
+            <line x1="0" y1="0" x2="0" y2="8" stroke="#ef4444" strokeWidth="1.5" opacity="0.6" />
+          </pattern>
+          <pattern id="blocked-pattern" width="8" height="8" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
+            <line x1="0" y1="0" x2="0" y2="8" stroke="#f59e0b" strokeWidth="1.5" opacity="0.6" />
+          </pattern>
+        </defs>
+        <rect width="1540" height="1180" fill="url(#grid)" />
+
+
+        {/* ======================================================== */}
+        {/* 1. TOP NATIONAL HIGHWAY (NH-ROAD)                         */}
+        {/* ======================================================== */}
+        <g>
+          {/* Asphalt NH Road */}
+          <rect x="0" y="0" width="1540" height="75" fill="#1b211e" stroke="#2a332e" strokeWidth="2" />
+
+          {/* White highway shoulders */}
+          <line x1="0" y1="2" x2="1540" y2="2" stroke="#e2e8f0" strokeWidth="2" opacity="0.8" />
+          <line x1="0" y1="73" x2="1540" y2="73" stroke="#e2e8f0" strokeWidth="2" opacity="0.8" />
+
+          {/* Yellow middle highway lanes separator */}
+          <line x1="0" y1="37" x2="1540" y2="37" stroke="#eab308" strokeWidth="2" strokeDasharray="30, 20" />
+
+          {/* NH Road Text */}
+          <text x="770" y="44" className="fill-white font-display font-extrabold text-[16px] tracking-[0.25em]" textAnchor="middle">
+            MADURAI - CHENNAI NH ROAD
+          </text>
+
+          {/* Small moving vehicles for premium animated wow-factor! */}
+          <g className="car-bus animate-drive-left">
+            {/* Bus */}
+            <rect x="300" y="10" width="45" height="15" rx="3" fill="#3b82f6" />
+            <rect x="305" y="12" width="8" height="11" fill="#93c5fd" />
+            <rect x="333" y="12" width="10" height="11" fill="#93c5fd" />
+            <circle cx="310" cy="25" r="2.5" fill="#000" />
+            <circle cx="335" cy="25" r="2.5" fill="#000" />
+          </g>
+          <g className="car-bus animate-drive-right">
+            {/* Car */}
+            <rect x="100" y="48" width="28" height="12" rx="2" fill="#ef4444" />
+            <rect x="115" y="50" width="8" height="8" fill="#fca5a5" />
+            <circle cx="106" cy="60" r="2" fill="#000" />
+            <circle cx="122" cy="60" r="2" fill="#000" />
+          </g>
+        </g>
+
+        {/* ======================================================== */}
+        {/* 2. INTERNAL ROADS AND PATHWAYS                          */}
+        {/* ======================================================== */}
+        <g>
+          {/* Main Center Vertical Road (33'0" Road) */}
+          <rect x="520" y="275" width="40" height="905" fill="#1b211e" stroke="#252b27" strokeWidth="0.5" />
+          <line x1="540" y1="275" x2="540" y2="1180" stroke="#ffffff" strokeWidth="1.5" strokeDasharray="15, 10" opacity="0.3" />
+
+          {/* Main center vertical road is labeled 33'0" ROAD */}
+          <text x="540" y="770" transform="rotate(-90 540 770)" className="road-text text-[10px]" fill="rgba(255,255,255,0.7)" textAnchor="middle">
+            33'0" ROAD
+          </text>
+
+          {/* New Middle Vertical Road (23'9" Road) */}
+          <rect x="740" y="275" width="40" height="105" fill="#1b211e" stroke="#252b27" strokeWidth="0.5" />
+          <text x="760" y="330" transform="rotate(-90 760 330)" className="road-text text-[9px]" fill="rgba(255,255,255,0.7)" textAnchor="middle">
+            23'9" ROAD
+          </text>
+
+          {/* Existing Road Left Slanted/Vertical */}
+          <polygon points="100,275 150,275 179,580 198.3,660 211.7,780 220,820 230.7,900 240.3,971.7 235,1180 185,1180 190.3,971.7 180.7,900 170,820 161.7,780 148.3,660 129,580 100,275" fill="#1b211e" />
+          <text x="205" y="940" transform="rotate(-82 205 940)" className="road-text text-[9px]">
+            EXISTING ROAD
+          </text>
+
+          {/* Horizontal Roads */}
+          {/* 23'9" Road - Row 6/7 Top */}
+          <rect x="0" y="380" width="1540" height="40" fill="#1b211e" />
+          <text x="260" y="399" className="road-text text-[9px]">23'9" ROAD</text>
+          <text x="814" y="399" className="road-text text-[9px]">23'9" ROAD</text>
+
+          {/* 23'9" Road - Bottom */}
+          <rect x="0" y="860" width="1540" height="40" fill="#1b211e" />
+          <line x1="0" y1="880" x2="1540" y2="880" stroke="#ffffff" strokeWidth="1.5" strokeDasharray="15, 10" opacity="0.3" />
+          <text x="260" y="884" className="road-text text-[10px]" fill="#ffffff" opacity="0.8" fontWeight="bold" textAnchor="middle">23'9" ROAD</text>
+          <text x="814" y="884" className="road-text text-[10px]" fill="#ffffff" opacity="0.8" fontWeight="bold" textAnchor="middle">23'9" ROAD</text>
+
+          {/* 29'6" Roads in between */}
+          {/* 29'6" Road - Middle Top */}
+          <rect x="0" y="500" width="1540" height="40" fill="#1b211e" />
+          <text x="260" y="523" className="road-text text-[9px]">29'6" ROAD</text>
+          <text x="688" y="523" className="road-text text-[10px]" fill="#ffffff" opacity="0.8" fontWeight="bold" textAnchor="middle">29'6" ROAD</text>
+          <text x="814" y="523" className="road-text text-[9px]">29'6" ROAD</text>
+
+          {/* 29'6" Road - Mid Middle */}
+          <rect x="0" y="620" width="1540" height="40" fill="#1b211e" />
+          <text x="260" y="643" className="road-text text-[9px]">29'6" ROAD</text>
+          <text x="688" y="643" className="road-text text-[10px]" fill="#ffffff" opacity="0.8" fontWeight="bold" textAnchor="middle">29'6" ROAD</text>
+          <text x="814" y="643" className="road-text text-[9px]">29'6" ROAD</text>
+
+          {/* 29'6" Road - Middle Bottom */}
+          <rect x="0" y="740" width="1540" height="40" fill="#1b211e" />
+          <text x="260" y="763" className="road-text text-[9px]">29'6" ROAD</text>
+          <text x="688" y="763" className="road-text text-[10px]" fill="#ffffff" opacity="0.8" fontWeight="bold" textAnchor="middle">29'6" ROAD</text>
+          <text x="814" y="763" className="road-text text-[9px]">29'6" ROAD</text>
+
+          {/* Blue Survey Lines */}
+          <line x1="610" y1="514" x2="744" y2="734" stroke="#1d4ed8" strokeWidth="1" strokeDasharray="5,3" opacity="0.7" />
+          <line x1="828" y1="482" x2="620" y2="762" stroke="#1d4ed8" strokeWidth="1" strokeDasharray="5,3" opacity="0.7" />
+          <line x1="416" y1="210" x2="350" y2="494" stroke="#1d4ed8" strokeWidth="1" strokeDasharray="5,3" opacity="0.7" />
+          <line x1="165" y1="597" x2="280" y2="734" stroke="#1d4ed8" strokeWidth="1" strokeDasharray="5,3" opacity="0.7" />
+          <line x1="530" y1="734" x2="440" y2="804" stroke="#1d4ed8" strokeWidth="1" strokeDasharray="5,3" opacity="0.7" />
+          <line x1="440" y1="804" x2="520" y2="836" stroke="#1d4ed8" strokeWidth="1" strokeDasharray="5,3" opacity="0.7" />
+
+          {/* Blue Survey Text Labels */}
+          <text x="588" y="514" className="fill-[#1d4ed8] font-sans font-bold text-[10px]" textAnchor="middle">117/8</text>
+          <text x="542" y="614" className="fill-[#1d4ed8] font-sans font-bold text-[10px]" textAnchor="middle">117/9</text>
+          <text x="583" y="617" className="fill-[#1d4ed8] font-sans font-bold text-[10px]" textAnchor="middle">117/10</text>
+          <text x="788" y="617" className="fill-[#1d4ed8] font-sans font-bold text-[10px]" textAnchor="middle">117/11</text>
+          <text x="824" y="614" className="fill-[#1d4ed8] font-sans font-bold text-[12px]" textAnchor="middle">114/1</text>
+          <text x="878" y="734" className="fill-[#1d4ed8] font-sans font-bold text-[12px]" textAnchor="middle">114/6A</text>
+          <text x="280" y="447" className="fill-[#1d4ed8] font-sans font-bold text-[11px]" textAnchor="middle">118/2</text>
+          <text x="100" y="562" className="fill-[#1d4ed8] font-sans font-bold text-[11px]" textAnchor="middle">118/3</text>
+          <text x="200" y="632" className="fill-[#1d4ed8] font-sans font-bold text-[11px]" textAnchor="middle">118/4</text>
+          <text x="583" y="734" className="fill-[#1d4ed8] font-sans font-bold text-[11px]" textAnchor="middle">118/5A</text>
+          <text x="440" y="824" className="fill-[#1d4ed8] font-sans font-bold text-[11px]" textAnchor="middle">118/5B</text>
+          <text x="848" y="824" className="fill-[#1d4ed8] font-sans font-bold text-[11px]" textAnchor="middle">114/6B</text>
+          <text x="908" y="924" className="fill-[#1d4ed8] font-sans font-bold text-[11px]" textAnchor="middle">114/7B</text>
+        </g>
+
+        {/* ======================================================== */}
+        {/* 3. PARKS AND COMMONS (GREEN SPACES)                     */}
+        {/* ======================================================== */}
+        <g>
+          {/* PARK-1 */}
+          <polygon
+            points="772,813.3 851,810 980,820 1060,860 772,860"
+            fill="#81c784"
+            stroke="#2e7d32"
+            strokeWidth="1"
+          />
+          <text x="860" y="840" className="font-display font-extrabold text-[12px] fill-[#1b5e20]" textAnchor="middle">
+            PARK-1
+          </text>
+
+          {/* PARK-2 */}
+          <polygon
+            points="641.7,900 1080,900 1130,950 1030,1000 880,970 770,990 641.7,951"
+            fill="#81c784"
+            stroke="#2e7d32"
+            strokeWidth="1"
+          />
+          <text x="854" y="945" className="font-display font-extrabold text-[12px] fill-[#1b5e20]" textAnchor="middle">
+            PARK-2
+          </text>
+
+          {/* Green strip bordering L1 bottom */}
+          <polygon
+            points="240.3,971.7 520,957.7 520,972.7 241.3,986.7"
+            fill="#2e7d32"
+            stroke="#1b5e20"
+            strokeWidth="1"
+          />
+        </g>
+
+        {/* ======================================================== */}
+        {/* 4. PLOTS RENDERING (INTERACTIVE ELEMENTS)               */}
+        {/* ======================================================== */}
+        <g>
+          {plots.map(plot => {
+            const coords = getPlotCoords(plot.id);
+            if (!coords) return null;
+
+            const numId = parseInt(plot.id, 10);
+            const isSelected = selectedPlot?.id === plot.id;
+            const originalColor = getPlotColor(plot.id);
+            const isUtility = plot.type === 'utility';
+
+            if (plot.id === '169') {
+              const points = "350,380 440,380 440,300";
+              return (
+                <g key={plot.id} onClick={() => onSelectPlot(plot)} transform="translate(0, 0)">
+                  {/* Outer glow/highlight if selected */}
+                  {isSelected && (
+                    <polygon
+                      points={adjustRow1Points(plot.id, "347,383 443,383 443,297")}
+                      fill="none"
+                      stroke="#0d9488"
+                      strokeWidth="2.5"
+                      style={{ filter: 'drop-shadow(0 0 8px rgba(13,148,136,0.5))' }}
+                    />
+                  )}
+
+                  {/* Base Plot shape */}
+                  <polygon
+                    points={points}
+                    fill={originalColor}
+                    stroke="#2c3e50"
+                    strokeWidth="1"
+                    className="plot-rect"
+                  />
+
+                  {/* Booking / Blocked Overlay Patterns */}
+                  {plot.status === 'booked' && !isUtility && (
+                    <polygon
+                      points={points}
+                      fill="url(#booked-pattern)"
+                      stroke="#ef4444"
+                      strokeWidth="1.5"
+                      pointerEvents="none"
+                    />
+                  )}
+
+                  {plot.status === 'blocked' && !isUtility && (
+                    <polygon
+                      points={points}
+                      fill="url(#blocked-pattern)"
+                      stroke="#f59e0b"
+                      strokeWidth="1.5"
+                      pointerEvents="none"
+                    />
+                  )}
+
+                  {/* Plot number "169" rotated */}
+                  <text
+                    x={adjustRow1X(plot.id, 410)}
+                    y={345}
+                    transform={`rotate(-90 ${adjustRow1X(plot.id, 410)} 345)`}
+                    className="plot-text"
+                    style={{
+                      fill: isSelected ? '#000000' : '#ef5350',
+                      fontWeight: 'bold',
+                      fontSize: '11px',
+                      textAnchor: 'middle'
+                    }}
+                  >
+                    {plot.id}
+                  </text>
+
+                  {/* Side dimensions */}
+                  {/* Bottom: 44'3" */}
+                  <text
+                    x={adjustRow1X(plot.id, 395)}
+                    y={373}
+                    className="plot-label-sub"
+                    style={{ fill: '#000000', fontSize: '8px', fontWeight: '500', textAnchor: 'middle' }}
+                  >
+                    44'3"
+                  </text>
+                  {/* Slanted edge: 60' */}
+                  <text
+                    x={adjustRow1X(plot.id, 390)}
+                    y={335}
+                    transform={`rotate(-41.6 ${adjustRow1X(plot.id, 390)} 335)`}
+                    className="plot-label-sub"
+                    style={{ fill: '#000000', fontSize: '8px', fontWeight: '500', textAnchor: 'middle' }}
+                  >
+                    60'
+                  </text>
+                </g>
+              );
+            }
+
+            if (plot.id === '168') {
+              const points = "440,380 520,380 520,240 440,300";
+              return (
+                <g key={plot.id} onClick={() => onSelectPlot(plot)} transform="translate(0, 0)">
+                  {/* Outer glow/highlight if selected */}
+                  {isSelected && (
+                    <polygon
+                      points={adjustRow1Points(plot.id, "437,383 523,383 523,237 437,297")}
+                      fill="none"
+                      stroke="#0d9488"
+                      strokeWidth="2.5"
+                      style={{ filter: 'drop-shadow(0 0 8px rgba(13,148,136,0.5))' }}
+                    />
+                  )}
+
+                  {/* Base Plot shape */}
+                  <polygon
+                    points={points}
+                    fill={originalColor}
+                    stroke="#2c3e50"
+                    strokeWidth="1"
+                    className="plot-rect"
+                  />
+
+                  {/* Booking / Blocked Overlay Patterns */}
+                  {plot.status === 'booked' && !isUtility && (
+                    <polygon
+                      points={points}
+                      fill="url(#booked-pattern)"
+                      stroke="#ef4444"
+                      strokeWidth="1.5"
+                      pointerEvents="none"
+                    />
+                  )}
+
+                  {plot.status === 'blocked' && !isUtility && (
+                    <polygon
+                      points={points}
+                      fill="url(#blocked-pattern)"
+                      stroke="#f59e0b"
+                      strokeWidth="1.5"
+                      pointerEvents="none"
+                    />
+                  )}
+
+                  {/* Plot number "168" rotated */}
+                  <text
+                    x={adjustRow1X(plot.id, 490)}
+                    y={315}
+                    transform={`rotate(-90 ${adjustRow1X(plot.id, 490)} 315)`}
+                    className="plot-text"
+                    style={{
+                      fill: isSelected ? '#000000' : '#ef5350',
+                      fontWeight: 'bold',
+                      fontSize: '11px',
+                      textAnchor: 'middle'
+                    }}
+                  >
+                    {plot.id}
+                  </text>
+
+                  {/* Side dimensions */}
+                  {/* Bottom: 40'6" */}
+                  <text
+                    x={adjustRow1X(plot.id, 480)}
+                    y={373}
+                    className="plot-label-sub"
+                    style={{ fill: '#000000', fontSize: '8px', fontWeight: '500', textAnchor: 'middle' }}
+                  >
+                    40'6"
+                  </text>
+                  {/* Left shared vertical: 39'3" */}
+                  <text
+                    x={adjustRow1X(plot.id, 452)}
+                    y={340}
+                    transform={`rotate(-90 ${adjustRow1X(plot.id, 452)} 340)`}
+                    className="plot-label-sub"
+                    style={{ fill: '#000000', fontSize: '8px', fontWeight: '500', textAnchor: 'middle' }}
+                  >
+                    39'3"
+                  </text>
+                  {/* Top slanted edge: 51'6" */}
+                  <text
+                    x={adjustRow1X(plot.id, 480)}
+                    y={265}
+                    transform={`rotate(-36.87 ${adjustRow1X(plot.id, 480)} 265)`}
+                    className="plot-label-sub"
+                    style={{ fill: '#000000', fontSize: '8px', fontWeight: '500', textAnchor: 'middle' }}
+                  >
+                    51'6"
+                  </text>
+                  {/* Right vertical: 71'6" */}
+                  <text
+                    x={adjustRow1X(plot.id, 512)}
+                    y={310}
+                    transform={`rotate(-90 ${adjustRow1X(plot.id, 512)} 310)`}
+                    className="plot-label-sub"
+                    style={{ fill: '#000000', fontSize: '8px', fontWeight: '500', textAnchor: 'middle' }}
+                  >
+                    71'6"
+                  </text>
+                </g>
+              );
+            }
+
+            if (plot.id === '166') {
+              const points = "640,370 640,320 770,320 770,380 650,380";
+              return (
+                <g key={plot.id} onClick={() => onSelectPlot(plot)} transform="translate(-80, 0)">
+                  {isSelected && (
+                    <polygon
+                      points={adjustRow1Points(plot.id, "637,371 637,317 773,317 773,383 649,383")}
+                      fill="none"
+                      stroke="#0d9488"
+                      strokeWidth="2.5"
+                      style={{ filter: 'drop-shadow(0 0 8px rgba(13,148,136,0.5))' }}
+                    />
+                  )}
+                  <polygon
+                    points={points}
+                    fill={originalColor}
+                    stroke="#2c3e50"
+                    strokeWidth="1"
+                    className="plot-rect"
+                  />
+                  {plot.status === 'booked' && !isUtility && (
+                    <polygon points={points} fill="url(#booked-pattern)" stroke="#ef4444" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  {plot.status === 'blocked' && !isUtility && (
+                    <polygon points={points} fill="url(#blocked-pattern)" stroke="#f59e0b" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  <text x={adjustRow1X(plot.id, 705)} y={355} className="plot-text" style={{ fill: isSelected ? '#000000' : '#ef5350', fontWeight: 'bold', fontSize: '12px' }}>
+                    {plot.id}
+                  </text>
+                  <text x={adjustRow1X(plot.id, 646)} y={350} transform={`rotate(-90 ${adjustRow1X(plot.id, 646)} 350)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '7.5px' }}>30'</text>
+                  <text x={adjustRow1X(plot.id, 764)} y={350} transform={`rotate(-90 ${adjustRow1X(plot.id, 764)} 350)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '7.5px' }}>30'</text>
+                  <text x={adjustRow1X(plot.id, 705)} y={374} className="plot-label-sub" style={{ fill: '#000000', fontSize: '7.5px' }}>40'</text>
+                </g>
+              );
+            }
+
+            if (plot.id === '167') {
+              const points = "640,320 640,220.5 770,205.5 770,320";
+              return (
+                <g key={plot.id} onClick={() => onSelectPlot(plot)} transform="translate(-80, 0)">
+                  {isSelected && (
+                    <polygon
+                      points={adjustRow1Points(plot.id, "637,323 637,219 773,202 773,323")}
+                      fill="none"
+                      stroke="#0d9488"
+                      strokeWidth="2.5"
+                      style={{ filter: 'drop-shadow(0 0 8px rgba(13,148,136,0.5))' }}
+                    />
+                  )}
+                  <polygon
+                    points={points}
+                    fill={originalColor}
+                    stroke="#2c3e50"
+                    strokeWidth="1"
+                    className="plot-rect"
+                  />
+                  {plot.status === 'booked' && !isUtility && (
+                    <polygon points={points} fill="url(#booked-pattern)" stroke="#ef4444" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  {plot.status === 'blocked' && !isUtility && (
+                    <polygon points={points} fill="url(#blocked-pattern)" stroke="#f59e0b" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  <text x={adjustRow1X(plot.id, 705)} y={275} className="plot-text" style={{ fill: isSelected ? '#000000' : '#ef5350', fontWeight: 'bold', fontSize: '12px' }}>
+                    {plot.id}
+                  </text>
+                  <text x={adjustRow1X(plot.id, 646)} y={270} transform={`rotate(-90 ${adjustRow1X(plot.id, 646)} 270)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '7.5px' }}>49'9"</text>
+                  <text x={adjustRow1X(plot.id, 764)} y={262} transform={`rotate(-90 ${adjustRow1X(plot.id, 764)} 262)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '7.5px' }}>57'3"</text>
+                  <text x={adjustRow1X(plot.id, 705)} y={314} className="plot-label-sub" style={{ fill: '#000000', fontSize: '7.5px' }}>40'</text>
+                  <text x={adjustRow1X(plot.id, 705)} y={221} transform={`rotate(-6.58 ${adjustRow1X(plot.id, 705)} 221)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '7.5px' }}>40'6"</text>
+                </g>
+              );
+            }
+
+            if (plot.id === 'EB') {
+              const points = "640,220.5 640,189.5 770,131 770,205.5";
+              return (
+                <g key={plot.id} onClick={() => onSelectPlot(plot)} transform="translate(-80, 0)">
+                  {isSelected && (
+                    <polygon
+                      points={adjustRow1Points(plot.id, "637,222.5 637,187.5 773,126.5 773,208.5")}
+                      fill="none"
+                      stroke="#0d9488"
+                      strokeWidth="2.5"
+                      style={{ filter: 'drop-shadow(0 0 8px rgba(13,148,136,0.5))' }}
+                    />
+                  )}
+                  <polygon
+                    points={points}
+                    fill={originalColor}
+                    stroke="#2c3e50"
+                    strokeWidth="1"
+                    className="plot-rect"
+                  />
+                  {plot.status === 'booked' && !isUtility && (
+                    <polygon points={points} fill="url(#booked-pattern)" stroke="#ef4444" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  {plot.status === 'blocked' && (
+                    <polygon points={points} fill="url(#blocked-pattern)" stroke="#f59e0b" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  <text x={adjustRow1X(plot.id, 705)} y={175} className="plot-text utility-label" style={{ fill: '#1e293b', fontWeight: 'bold', fontSize: '9px' }}>
+                    {plot.id}
+                  </text>
+                  <text x={adjustRow1X(plot.id, 646)} y={205} transform={`rotate(-90 ${adjustRow1X(plot.id, 646)} 205)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '7.5px' }}>15'6"</text>
+                  <text x={adjustRow1X(plot.id, 764)} y={168} transform={`rotate(-90 ${adjustRow1X(plot.id, 764)} 168)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '7.5px' }}>37'3"</text>
+                  <text x={adjustRow1X(plot.id, 705)} y={166} transform={`rotate(-24.23 ${adjustRow1X(plot.id, 705)} 166)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '7.5px' }}>45'6"</text>
+                </g>
+              );
+            }
+
+            if (plot.id === 'LB') {
+              const points = "770,271 770,255.5 900,232 900,269.25";
+              return (
+                <g key={plot.id} onClick={() => onSelectPlot(plot)} transform="translate(-80, 0)">
+                  {isSelected && (
+                    <polygon
+                      points={adjustRow1Points(plot.id, "767,273 767,253.5 903,229 903,271.25")}
+                      fill="none"
+                      stroke="#0d9488"
+                      strokeWidth="2.5"
+                      style={{ filter: 'drop-shadow(0 0 8px rgba(13,148,136,0.5))' }}
+                    />
+                  )}
+                  <polygon
+                    points={points}
+                    fill={originalColor}
+                    stroke="#2c3e50"
+                    strokeWidth="1"
+                    className="plot-rect"
+                  />
+                  {plot.status === 'booked' && !isUtility && (
+                    <polygon points={points} fill="url(#booked-pattern)" stroke="#ef4444" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  {plot.status === 'blocked' && (
+                    <polygon points={points} fill="url(#blocked-pattern)" stroke="#f59e0b" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  <text x={adjustRow1X(plot.id, 835)} y={255} className="plot-text utility-label" style={{ fill: '#1e293b', fontWeight: 'bold', fontSize: '9px' }}>
+                    {plot.id}
+                  </text>
+                  <text x={adjustRow1X(plot.id, 776)} y={263} transform={`rotate(-90 ${adjustRow1X(plot.id, 776)} 263)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '7.5px' }}>37'3"</text>
+                  <text x={adjustRow1X(plot.id, 894)} y={250} transform={`rotate(-90 ${adjustRow1X(plot.id, 894)} 250)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '7.5px' }}>40'</text>
+                  <text x={adjustRow1X(plot.id, 835)} y={265} className="plot-label-sub" style={{ fill: '#000000', fontSize: '7.5px' }}>40'</text>
+                  <text x={adjustRow1X(plot.id, 835)} y={249} transform={`rotate(-10.25 ${adjustRow1X(plot.id, 835)} 249)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '7.5px' }}>45'6"</text>
+                </g>
+              );
+            }
+
+            if (plot.id === '162') {
+              const points = "770,284.25 770,271 900,269.25 900,284.25";
+              return (
+                <g key={plot.id} onClick={() => onSelectPlot(plot)} transform="translate(-80, 0)">
+                  {isSelected && (
+                    <polygon
+                      points={adjustRow1Points(plot.id, "767,286.25 767,269 903,267.25 903,286.25")}
+                      fill="none"
+                      stroke="#0d9488"
+                      strokeWidth="2.5"
+                      style={{ filter: 'drop-shadow(0 0 8px rgba(13,148,136,0.5))' }}
+                    />
+                  )}
+                  <polygon
+                    points={points}
+                    fill={originalColor}
+                    stroke="#2c3e50"
+                    strokeWidth="1"
+                    className="plot-rect"
+                  />
+                  {plot.status === 'booked' && !isUtility && (
+                    <polygon points={points} fill="url(#booked-pattern)" stroke="#ef4444" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  {plot.status === 'blocked' && !isUtility && (
+                    <polygon points={points} fill="url(#blocked-pattern)" stroke="#f59e0b" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  <text x={adjustRow1X(plot.id, 835)} y={278} className="plot-text" style={{ fill: isSelected ? '#000000' : '#ef5350', fontWeight: 'bold', fontSize: '10px' }}>
+                    {plot.id}
+                  </text>
+                  <text x={adjustRow1X(plot.id, 776)} y={277.6} transform={`rotate(-90 ${adjustRow1X(plot.id, 776)} 277.6)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '7.5px' }}>15'</text>
+                  <text x={adjustRow1X(plot.id, 894)} y={276.75} transform={`rotate(-90 ${adjustRow1X(plot.id, 894)} 276.75)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '7.5px' }}>15'</text>
+                </g>
+              );
+            }
+
+            if (plot.id === '163') {
+              const points = "770,299.25 770,284.25 900,284.25 900,299.25";
+              return (
+                <g key={plot.id} onClick={() => onSelectPlot(plot)} transform="translate(-80, 0)">
+                  {isSelected && (
+                    <polygon
+                      points={adjustRow1Points(plot.id, "767,301.25 767,282.25 903,282.25 903,301.25")}
+                      fill="none"
+                      stroke="#0d9488"
+                      strokeWidth="2.5"
+                      style={{ filter: 'drop-shadow(0 0 8px rgba(13,148,136,0.5))' }}
+                    />
+                  )}
+                  <polygon
+                    points={points}
+                    fill={originalColor}
+                    stroke="#2c3e50"
+                    strokeWidth="1"
+                    className="plot-rect"
+                  />
+                  {plot.status === 'booked' && !isUtility && (
+                    <polygon points={points} fill="url(#booked-pattern)" stroke="#ef4444" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  {plot.status === 'blocked' && !isUtility && (
+                    <polygon points={points} fill="url(#blocked-pattern)" stroke="#f59e0b" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  <text x={adjustRow1X(plot.id, 835)} y={293} className="plot-text" style={{ fill: isSelected ? '#000000' : '#ef5350', fontWeight: 'bold', fontSize: '10px' }}>
+                    {plot.id}
+                  </text>
+                  <text x={adjustRow1X(plot.id, 776)} y={291.75} transform={`rotate(-90 ${adjustRow1X(plot.id, 776)} 291.75)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '7.5px' }}>15'</text>
+                  <text x={adjustRow1X(plot.id, 894)} y={291.75} transform={`rotate(-90 ${adjustRow1X(plot.id, 894)} 291.75)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '7.5px' }}>15'</text>
+                </g>
+              );
+            }
+
+            if (plot.id === '164') {
+              const points = "770,314.25 770,299.25 900,299.25 900,314.25";
+              return (
+                <g key={plot.id} onClick={() => onSelectPlot(plot)} transform="translate(-80, 0)">
+                  {isSelected && (
+                    <polygon
+                      points={adjustRow1Points(plot.id, "767,316.25 767,297.25 903,297.25 903,316.25")}
+                      fill="none"
+                      stroke="#0d9488"
+                      strokeWidth="2.5"
+                      style={{ filter: 'drop-shadow(0 0 8px rgba(13,148,136,0.5))' }}
+                    />
+                  )}
+                  <polygon
+                    points={points}
+                    fill={originalColor}
+                    stroke="#2c3e50"
+                    strokeWidth="1"
+                    className="plot-rect"
+                  />
+                  {plot.status === 'booked' && !isUtility && (
+                    <polygon points={points} fill="url(#booked-pattern)" stroke="#ef4444" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  {plot.status === 'blocked' && !isUtility && (
+                    <polygon points={points} fill="url(#blocked-pattern)" stroke="#f59e0b" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  <text x={adjustRow1X(plot.id, 835)} y={308} className="plot-text" style={{ fill: isSelected ? '#000000' : '#ef5350', fontWeight: 'bold', fontSize: '10px' }}>
+                    {plot.id}
+                  </text>
+                  <text x={adjustRow1X(plot.id, 776)} y={306.75} transform={`rotate(-90 ${adjustRow1X(plot.id, 776)} 306.75)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '7.5px' }}>15'</text>
+                  <text x={adjustRow1X(plot.id, 894)} y={306.75} transform={`rotate(-90 ${adjustRow1X(plot.id, 894)} 306.75)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '7.5px' }}>15'</text>
+                </g>
+              );
+            }
+
+            if (plot.id === '165') {
+              const points = "770,380 770,314.25 900,314.25 900,370 890,380";
+              return (
+                <g key={plot.id} onClick={() => onSelectPlot(plot)} transform="translate(-80, 0)">
+                  {isSelected && (
+                    <polygon
+                      points={adjustRow1Points(plot.id, "767,383 767,311.25 903,311.25 903,369 889,383")}
+                      fill="none"
+                      stroke="#0d9488"
+                      strokeWidth="2.5"
+                      style={{ filter: 'drop-shadow(0 0 8px rgba(13,148,136,0.5))' }}
+                    />
+                  )}
+                  <polygon
+                    points={points}
+                    fill={originalColor}
+                    stroke="#2c3e50"
+                    strokeWidth="1"
+                    className="plot-rect"
+                  />
+                  {plot.status === 'booked' && !isUtility && (
+                    <polygon points={points} fill="url(#booked-pattern)" stroke="#ef4444" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  {plot.status === 'blocked' && !isUtility && (
+                    <polygon points={points} fill="url(#blocked-pattern)" stroke="#f59e0b" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  <text x={adjustRow1X(plot.id, 835)} y={347} className="plot-text" style={{ fill: isSelected ? '#000000' : '#ef5350', fontWeight: 'bold', fontSize: '12px' }}>
+                    {plot.id}
+                  </text>
+                  <text x={adjustRow1X(plot.id, 776)} y={347} transform={`rotate(-90 ${adjustRow1X(plot.id, 776)} 347)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '7.5px' }}>65'9"</text>
+                  <text x={adjustRow1X(plot.id, 894)} y={342} transform={`rotate(-90 ${adjustRow1X(plot.id, 894)} 342)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '7.5px' }}>65'9"</text>
+                  <text x={adjustRow1X(plot.id, 835)} y={374} className="plot-label-sub" style={{ fill: '#000000', fontSize: '7.5px' }}>40'</text>
+                  <text x={adjustRow1X(plot.id, 835)} y={324} className="plot-label-sub" style={{ fill: '#000000', fontSize: '7.5px' }}>40'</text>
+                </g>
+              );
+            }
+
+            if (plot.id === '157') {
+              const points = "980,338 980,248 1003,329.5";
+              return (
+                <g key={plot.id} onClick={() => onSelectPlot(plot)} transform="translate(-200, 0)">
+                  {isSelected && (
+                    <polygon points={points} fill="none" stroke="#0d9488" strokeWidth="2.5" style={{ filter: 'drop-shadow(0 0 8px rgba(13,148,136,0.5))' }} />
+                  )}
+                  <polygon points={points} fill={originalColor} stroke="#2c3e50" strokeWidth="1" className="plot-rect" />
+                  {plot.status === 'booked' && !isUtility && (
+                    <polygon points={points} fill="url(#booked-pattern)" stroke="#ef4444" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  {plot.status === 'blocked' && !isUtility && (
+                    <polygon points={points} fill="url(#booked-pattern)" stroke="#f59e0b" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  <text x={adjustRow1X(plot.id, 991)} y={300} transform={`rotate(-90 ${adjustRow1X(plot.id, 991)} 300)`} className="plot-text" style={{ fill: isSelected ? '#000000' : '#ef5350', fontWeight: 'bold', fontSize: '9px', textAnchor: 'middle' }}>
+                    {plot.id}
+                  </text>
+                  <text x={adjustRow1X(plot.id, 986)} y={293} transform={`rotate(-90 ${adjustRow1X(plot.id, 986)} 293)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>45'</text>
+                  <text x={adjustRow1X(plot.id, 996)} y={282} transform={`rotate(-74.1 ${adjustRow1X(plot.id, 996)} 282)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>43'3"</text>
+                  <text x={adjustRow1X(plot.id, 993)} y={338} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>11'6"</text>
+                </g>
+              );
+            }
+
+            if (plot.id === '156') {
+              const points = "980,380 980,338 1003,329.5 1012.5,380";
+              return (
+                <g key={plot.id} onClick={() => onSelectPlot(plot)} transform="translate(-200, 0)">
+                  {isSelected && (
+                    <polygon points={points} fill="none" stroke="#0d9488" strokeWidth="2.5" style={{ filter: 'drop-shadow(0 0 8px rgba(13,148,136,0.5))' }} />
+                  )}
+                  <polygon points={points} fill={originalColor} stroke="#2c3e50" strokeWidth="1" className="plot-rect" />
+                  {plot.status === 'booked' && !isUtility && (
+                    <polygon points={points} fill="url(#booked-pattern)" stroke="#ef4444" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  {plot.status === 'blocked' && !isUtility && (
+                    <polygon points={points} fill="url(#booked-pattern)" stroke="#f59e0b" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  <text x={adjustRow1X(plot.id, 996)} y={358} transform={`rotate(-90 ${adjustRow1X(plot.id, 996)} 358)`} className="plot-text" style={{ fill: isSelected ? '#000000' : '#ef5350', fontWeight: 'bold', fontSize: '9px', textAnchor: 'middle' }}>
+                    {plot.id}
+                  </text>
+                  <text x={adjustRow1X(plot.id, 986)} y={359} transform={`rotate(-90 ${adjustRow1X(plot.id, 986)} 359)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>21'</text>
+                  <text x={adjustRow1X(plot.id, 996)} y={375} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>16'3"</text>
+                  <text x={adjustRow1X(plot.id, 991)} y={337} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>11'6"</text>
+                </g>
+              );
+            }
+
+            if (plot.id === '155') {
+              const points = "1012.5,380 1003,329.5 1056,302.5 1052.5,380";
+              return (
+                <g key={plot.id} onClick={() => onSelectPlot(plot)} transform="translate(-200, 0)">
+                  {isSelected && (
+                    <polygon points={points} fill="none" stroke="#0d9488" strokeWidth="2.5" style={{ filter: 'drop-shadow(0 0 8px rgba(13,148,136,0.5))' }} />
+                  )}
+                  <polygon points={points} fill={originalColor} stroke="#2c3e50" strokeWidth="1" className="plot-rect" />
+                  {plot.status === 'booked' && !isUtility && (
+                    <polygon points={points} fill="url(#booked-pattern)" stroke="#ef4444" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  {plot.status === 'blocked' && !isUtility && (
+                    <polygon points={points} fill="url(#blocked-pattern)" stroke="#f59e0b" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  <text x={adjustRow1X(plot.id, 1031)} y={353} transform={`rotate(-90 ${adjustRow1X(plot.id, 1031)} 353)`} className="plot-text" style={{ fill: isSelected ? '#000000' : '#ef5350', fontWeight: 'bold', fontSize: '9px', textAnchor: 'middle' }}>
+                    {plot.id}
+                  </text>
+                  <text x={adjustRow1X(plot.id, 1013)} y={358} transform={`rotate(-80 ${adjustRow1X(plot.id, 1013)} 358)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>25'3"</text>
+                  <text x={adjustRow1X(plot.id, 1048)} y={341} transform={`rotate(-90 ${adjustRow1X(plot.id, 1048)} 341)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>38'9"</text>
+                  <text x={adjustRow1X(plot.id, 1031)} y={375} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>20'</text>
+                  <text x={adjustRow1X(plot.id, 1031)} y={321} transform={`rotate(-27 ${adjustRow1X(plot.id, 1031)} 321)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>26'6"</text>
+                </g>
+              );
+            }
+
+            if (plot.id === '154') {
+              const points = "1052.5,380 1056,302.5 1096.5,306 1092.5,380";
+              return (
+                <g key={plot.id} onClick={() => onSelectPlot(plot)} transform="translate(-200, 0)">
+                  {isSelected && (
+                    <polygon points={points} fill="none" stroke="#0d9488" strokeWidth="2.5" style={{ filter: 'drop-shadow(0 0 8px rgba(13,148,136,0.5))' }} />
+                  )}
+                  <polygon points={points} fill={originalColor} stroke="#2c3e50" strokeWidth="1" className="plot-rect" />
+                  {plot.status === 'booked' && !isUtility && (
+                    <polygon points={points} fill="url(#booked-pattern)" stroke="#ef4444" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  {plot.status === 'blocked' && !isUtility && (
+                    <polygon points={points} fill="url(#blocked-pattern)" stroke="#f59e0b" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  <text x={adjustRow1X(plot.id, 1074)} y={350} transform={`rotate(-90 ${adjustRow1X(plot.id, 1074)} 350)`} className="plot-text" style={{ fill: isSelected ? '#000000' : '#ef5350', fontWeight: 'bold', fontSize: '9px', textAnchor: 'middle' }}>
+                    {plot.id}
+                  </text>
+                  <text x={adjustRow1X(plot.id, 1088)} y={343} transform={`rotate(-90 ${adjustRow1X(plot.id, 1088)} 343)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>37'</text>
+                  <text x={adjustRow1X(plot.id, 1074)} y={375} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>20'</text>
+                  <text x={adjustRow1X(plot.id, 1076)} y={312} transform={`rotate(5 ${adjustRow1X(plot.id, 1076)} 312)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>20'3"</text>
+                </g>
+              );
+            }
+
+            if (plot.id === '153') {
+              const points = "1092.5,380 1096.5,306 1136.5,304 1132.5,380";
+              return (
+                <g key={plot.id} onClick={() => onSelectPlot(plot)} transform="translate(-200, 0)">
+                  {isSelected && (
+                    <polygon points={points} fill="none" stroke="#0d9488" strokeWidth="2.5" style={{ filter: 'drop-shadow(0 0 8px rgba(13,148,136,0.5))' }} />
+                  )}
+                  <polygon points={points} fill={originalColor} stroke="#2c3e50" strokeWidth="1" className="plot-rect" />
+                  {plot.status === 'booked' && !isUtility && (
+                    <polygon points={points} fill="url(#booked-pattern)" stroke="#ef4444" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  {plot.status === 'blocked' && !isUtility && (
+                    <polygon points={points} fill="url(#blocked-pattern)" stroke="#f59e0b" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  <text x={adjustRow1X(plot.id, 1114)} y={350} transform={`rotate(-90 ${adjustRow1X(plot.id, 1114)} 350)`} className="plot-text" style={{ fill: isSelected ? '#000000' : '#ef5350', fontWeight: 'bold', fontSize: '9px', textAnchor: 'middle' }}>
+                    {plot.id}
+                  </text>
+                  <text x={adjustRow1X(plot.id, 1128)} y={342} transform={`rotate(-90 ${adjustRow1X(plot.id, 1128)} 342)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>38'</text>
+                  <text x={adjustRow1X(plot.id, 1114)} y={375} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>20'</text>
+                  <text x={adjustRow1X(plot.id, 1116)} y={311} transform={`rotate(-3 ${adjustRow1X(plot.id, 1116)} 311)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>20'</text>
+                </g>
+              );
+            }
+
+            if (plot.id === '152') {
+              const points = "1132.5,380 1136.5,304 1176.5,304 1172.5,380";
+              return (
+                <g key={plot.id} onClick={() => onSelectPlot(plot)} transform="translate(-200, 0)">
+                  {isSelected && (
+                    <polygon points={points} fill="none" stroke="#0d9488" strokeWidth="2.5" style={{ filter: 'drop-shadow(0 0 8px rgba(13,148,136,0.5))' }} />
+                  )}
+                  <polygon points={points} fill={originalColor} stroke="#2c3e50" strokeWidth="1" className="plot-rect" />
+                  {plot.status === 'booked' && !isUtility && (
+                    <polygon points={points} fill="url(#booked-pattern)" stroke="#ef4444" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  {plot.status === 'blocked' && !isUtility && (
+                    <polygon points={points} fill="url(#blocked-pattern)" stroke="#f59e0b" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  <text x={adjustRow1X(plot.id, 1154)} y={350} transform={`rotate(-90 ${adjustRow1X(plot.id, 1154)} 350)`} className="plot-text" style={{ fill: isSelected ? '#000000' : '#ef5350', fontWeight: 'bold', fontSize: '9px', textAnchor: 'middle' }}>
+                    {plot.id}
+                  </text>
+                  <text x={adjustRow1X(plot.id, 1168)} y={342} transform={`rotate(-90 ${adjustRow1X(plot.id, 1168)} 342)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>38'</text>
+                  <text x={adjustRow1X(plot.id, 1154)} y={375} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>20'</text>
+                  <text x={adjustRow1X(plot.id, 1156)} y={311} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>20'</text>
+                </g>
+              );
+            }
+
+            if (plot.id === '151') {
+              const points = "1172.5,380 1176.5,304 1216.5,302.5 1212.5,380";
+              return (
+                <g key={plot.id} onClick={() => onSelectPlot(plot)} transform="translate(-200, 0)">
+                  {isSelected && (
+                    <polygon points={points} fill="none" stroke="#0d9488" strokeWidth="2.5" style={{ filter: 'drop-shadow(0 0 8px rgba(13,148,136,0.5))' }} />
+                  )}
+                  <polygon points={points} fill={originalColor} stroke="#2c3e50" strokeWidth="1" className="plot-rect" />
+                  {plot.status === 'booked' && !isUtility && (
+                    <polygon points={points} fill="url(#booked-pattern)" stroke="#ef4444" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  {plot.status === 'blocked' && !isUtility && (
+                    <polygon points={points} fill="url(#blocked-pattern)" stroke="#f59e0b" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  <text x={adjustRow1X(plot.id, 1194)} y={350} transform={`rotate(-90 ${adjustRow1X(plot.id, 1194)} 350)`} className="plot-text" style={{ fill: isSelected ? '#000000' : '#ef5350', fontWeight: 'bold', fontSize: '9px', textAnchor: 'middle' }}>
+                    {plot.id}
+                  </text>
+                  <text x={adjustRow1X(plot.id, 1208)} y={341} transform={`rotate(-90 ${adjustRow1X(plot.id, 1208)} 341)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>38'9"</text>
+                  <text x={adjustRow1X(plot.id, 1194)} y={375} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>20'</text>
+                  <text x={adjustRow1X(plot.id, 1196)} y={310} transform={`rotate(-2 ${adjustRow1X(plot.id, 1196)} 310)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>20'</text>
+                </g>
+              );
+            }
+
+            if (plot.id === '150') {
+              const points = "1212.5,380 1216.5,302.5 1256.5,302 1252.5,380";
+              return (
+                <g key={plot.id} onClick={() => onSelectPlot(plot)} transform="translate(-200, 0)">
+                  {isSelected && (
+                    <polygon points={points} fill="none" stroke="#0d9488" strokeWidth="2.5" style={{ filter: 'drop-shadow(0 0 8px rgba(13,148,136,0.5))' }} />
+                  )}
+                  <polygon points={points} fill={originalColor} stroke="#2c3e50" strokeWidth="1" className="plot-rect" />
+                  {plot.status === 'booked' && !isUtility && (
+                    <polygon points={points} fill="url(#booked-pattern)" stroke="#ef4444" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  {plot.status === 'blocked' && !isUtility && (
+                    <polygon points={points} fill="url(#blocked-pattern)" stroke="#f59e0b" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  <text x={adjustRow1X(plot.id, 1234)} y={350} transform={`rotate(-90 ${adjustRow1X(plot.id, 1234)} 350)`} className="plot-text" style={{ fill: isSelected ? '#000000' : '#ef5350', fontWeight: 'bold', fontSize: '9px', textAnchor: 'middle' }}>
+                    {plot.id}
+                  </text>
+                  <text x={adjustRow1X(plot.id, 1248)} y={341} transform={`rotate(-90 ${adjustRow1X(plot.id, 1248)} 341)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>39'</text>
+                  <text x={adjustRow1X(plot.id, 1234)} y={375} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>20'</text>
+                  <text x={adjustRow1X(plot.id, 1236)} y={309} transform={`rotate(-1 ${adjustRow1X(plot.id, 1236)} 309)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>20'</text>
+                </g>
+              );
+            }
+
+            if (plot.id === '149') {
+              const points = "1252.5,380 1256.5,302 1297,299 1292.5,380";
+              return (
+                <g key={plot.id} onClick={() => onSelectPlot(plot)} transform="translate(-200, 0)">
+                  {isSelected && (
+                    <polygon points={points} fill="none" stroke="#0d9488" strokeWidth="2.5" style={{ filter: 'drop-shadow(0 0 8px rgba(13,148,136,0.5))' }} />
+                  )}
+                  <polygon points={points} fill={originalColor} stroke="#2c3e50" strokeWidth="1" className="plot-rect" />
+                  {plot.status === 'booked' && !isUtility && (
+                    <polygon points={points} fill="url(#booked-pattern)" stroke="#ef4444" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  {plot.status === 'blocked' && !isUtility && (
+                    <polygon points={points} fill="url(#blocked-pattern)" stroke="#f59e0b" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  <text x={adjustRow1X(plot.id, 1274)} y={350} transform={`rotate(-90 ${adjustRow1X(plot.id, 1274)} 350)`} className="plot-text" style={{ fill: isSelected ? '#000000' : '#ef5350', fontWeight: 'bold', fontSize: '9px', textAnchor: 'middle' }}>
+                    {plot.id}
+                  </text>
+                  <text x={adjustRow1X(plot.id, 1288)} y={340} transform={`rotate(-90 ${adjustRow1X(plot.id, 1288)} 340)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>40'6"</text>
+                  <text x={adjustRow1X(plot.id, 1274)} y={375} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>20'</text>
+                  <text x={adjustRow1X(plot.id, 1276)} y={307} transform={`rotate(-4 ${adjustRow1X(plot.id, 1276)} 307)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>20'3"</text>
+                </g>
+              );
+            }
+
+            if (plot.id === '148') {
+              const points = "1292.5,380 1297,299 1336,300 1332.5,380";
+              return (
+                <g key={plot.id} onClick={() => onSelectPlot(plot)} transform="translate(-200, 0)">
+                  {isSelected && (
+                    <polygon points={points} fill="none" stroke="#0d9488" strokeWidth="2.5" style={{ filter: 'drop-shadow(0 0 8px rgba(13,148,136,0.5))' }} />
+                  )}
+                  <polygon points={points} fill={originalColor} stroke="#2c3e50" strokeWidth="1" className="plot-rect" />
+                  {plot.status === 'booked' && !isUtility && (
+                    <polygon points={points} fill="url(#booked-pattern)" stroke="#ef4444" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  {plot.status === 'blocked' && !isUtility && (
+                    <polygon points={points} fill="url(#blocked-pattern)" stroke="#f59e0b" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  <text x={adjustRow1X(plot.id, 1314)} y={350} transform={`rotate(-90 ${adjustRow1X(plot.id, 1314)} 350)`} className="plot-text" style={{ fill: isSelected ? '#000000' : '#ef5350', fontWeight: 'bold', fontSize: '9px', textAnchor: 'middle' }}>
+                    {plot.id}
+                  </text>
+                  <text x={adjustRow1X(plot.id, 1328)} y={340} transform={`rotate(-90 ${adjustRow1X(plot.id, 1328)} 340)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>40'</text>
+                  <text x={adjustRow1X(plot.id, 1314)} y={375} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>20'</text>
+                  <text x={adjustRow1X(plot.id, 1316)} y={306} transform={`rotate(2 ${adjustRow1X(plot.id, 1316)} 306)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>19'6"</text>
+                </g>
+              );
+            }
+
+            if (plot.id === '147') {
+              const points = "1332.5,380 1336,300 1375,302.5 1372.5,380";
+              return (
+                <g key={plot.id} onClick={() => onSelectPlot(plot)} transform="translate(-200, 0)">
+                  {isSelected && (
+                    <polygon points={points} fill="none" stroke="#0d9488" strokeWidth="2.5" style={{ filter: 'drop-shadow(0 0 8px rgba(13,148,136,0.5))' }} />
+                  )}
+                  <polygon points={points} fill={originalColor} stroke="#2c3e50" strokeWidth="1" className="plot-rect" />
+                  {plot.status === 'booked' && !isUtility && (
+                    <polygon points={points} fill="url(#booked-pattern)" stroke="#ef4444" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  {plot.status === 'blocked' && !isUtility && (
+                    <polygon points={points} fill="url(#blocked-pattern)" stroke="#f59e0b" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  <text x={adjustRow1X(plot.id, 1354)} y={350} transform={`rotate(-90 ${adjustRow1X(plot.id, 1354)} 350)`} className="plot-text" style={{ fill: isSelected ? '#000000' : '#ef5350', fontWeight: 'bold', fontSize: '9px', textAnchor: 'middle' }}>
+                    {plot.id}
+                  </text>
+                  <text x={adjustRow1X(plot.id, 1368)} y={341} transform={`rotate(-90 ${adjustRow1X(plot.id, 1368)} 341)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>38'9"</text>
+                  <text x={adjustRow1X(plot.id, 1354)} y={375} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>20'</text>
+                  <text x={adjustRow1X(plot.id, 1356)} y={307} transform={`rotate(3 ${adjustRow1X(plot.id, 1356)} 307)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>19'6"</text>
+                </g>
+              );
+            }
+
+            if (plot.id === '146') {
+              const points = "1372.5,380 1375,302.5 1408,304.5 1405,380";
+              return (
+                <g key={plot.id} onClick={() => onSelectPlot(plot)} transform="translate(-200, 0)">
+                  {isSelected && (
+                    <polygon points={points} fill="none" stroke="#0d9488" strokeWidth="2.5" style={{ filter: 'drop-shadow(0 0 8px rgba(13,148,136,0.5))' }} />
+                  )}
+                  <polygon points={points} fill={originalColor} stroke="#2c3e50" strokeWidth="1" className="plot-rect" />
+                  {plot.status === 'booked' && !isUtility && (
+                    <polygon points={points} fill="url(#booked-pattern)" stroke="#ef4444" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  {plot.status === 'blocked' && !isUtility && (
+                    <polygon points={points} fill="url(#blocked-pattern)" stroke="#f59e0b" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  <text x={adjustRow1X(plot.id, 1389)} y={350} transform={`rotate(-90 ${adjustRow1X(plot.id, 1389)} 350)`} className="plot-text" style={{ fill: isSelected ? '#000000' : '#ef5350', fontWeight: 'bold', fontSize: '9px', textAnchor: 'middle' }}>
+                    {plot.id}
+                  </text>
+                  <text x={adjustRow1X(plot.id, 1400)} y={342} transform={`rotate(-90 ${adjustRow1X(plot.id, 1400)} 342)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>37'9"</text>
+                  <text x={adjustRow1X(plot.id, 1389)} y={375} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>16'3"</text>
+                  <text x={adjustRow1X(plot.id, 1391)} y={309} transform={`rotate(3 ${adjustRow1X(plot.id, 1391)} 309)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>16'6"</text>
+                </g>
+              );
+            }
+
+            if (plot.id === '145') {
+              const points = "1405,380 1408,304.5 1438,306.5 1433,380";
+              return (
+                <g key={plot.id} onClick={() => onSelectPlot(plot)} transform="translate(-200, 0)">
+                  {isSelected && (
+                    <polygon points={points} fill="none" stroke="#0d9488" strokeWidth="2.5" style={{ filter: 'drop-shadow(0 0 8px rgba(13,148,136,0.5))' }} />
+                  )}
+                  <polygon points={points} fill={originalColor} stroke="#2c3e50" strokeWidth="1" className="plot-rect" />
+                  {plot.status === 'booked' && !isUtility && (
+                    <polygon points={points} fill="url(#booked-pattern)" stroke="#ef4444" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  {plot.status === 'blocked' && !isUtility && (
+                    <polygon points={points} fill="url(#blocked-pattern)" stroke="#f59e0b" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  <text x={adjustRow1X(plot.id, 1421)} y={350} transform={`rotate(-90 ${adjustRow1X(plot.id, 1421)} 350)`} className="plot-text" style={{ fill: isSelected ? '#000000' : '#ef5350', fontWeight: 'bold', fontSize: '9px', textAnchor: 'middle' }}>
+                    {plot.id}
+                  </text>
+                  <text x={adjustRow1X(plot.id, 1432)} y={343} transform={`rotate(-90 ${adjustRow1X(plot.id, 1432)} 343)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>36'9"</text>
+                  <text x={adjustRow1X(plot.id, 1421)} y={375} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>14'</text>
+                  <text x={adjustRow1X(plot.id, 1423)} y={311} transform={`rotate(3 ${adjustRow1X(plot.id, 1423)} 311)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>15'</text>
+                </g>
+              );
+            }
+
+            if (plot.id === '116') {
+              const points = "640,447 680,447 680,490 650,490 640,480";
+              return (
+                <g key={plot.id} onClick={() => onSelectPlot(plot)} transform="translate(-80, 10)">
+                  {isSelected && (
+                    <polygon points={points} fill="none" stroke="#0d9488" strokeWidth="2.5" style={{ filter: 'drop-shadow(0 0 8px rgba(13,148,136,0.5))' }} />
+                  )}
+                  <polygon points={points} fill={originalColor} stroke="#2c3e50" strokeWidth="1" className="plot-rect" />
+                  {plot.status === 'booked' && !isUtility && (
+                    <polygon points={points} fill="url(#booked-pattern)" stroke="#ef4444" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  {plot.status === 'blocked' && !isUtility && (
+                    <polygon points={points} fill="url(#blocked-pattern)" stroke="#f59e0b" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  <text x={660} y={468} transform="rotate(-90 660 468)" className="plot-text" style={{ fill: isSelected ? '#000000' : '#ef5350', fontWeight: 'bold', fontSize: '9px', textAnchor: 'middle' }}>
+                    {plot.id}
+                  </text>
+                  <text x={646} y={462} transform="rotate(-90 646 462)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>35'</text>
+                  <text x={665} y={485} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>30'</text>
+                  <text x={674} y={468} transform="rotate(-90 674 468)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>35'</text>
+                </g>
+              );
+            }
+
+            if (numId >= 107 && numId <= 115) {
+              const idx = 115 - numId;
+              const xStart = 680 + idx * 40;
+              const xEnd = xStart + 40;
+              const points = `${xStart},447 ${xEnd},447 ${xEnd},490 ${xStart},490`;
+              const tx = xStart >= 980 ? -120 : -80;
+              return (
+                <g key={plot.id} onClick={() => onSelectPlot(plot)} transform={`translate(${tx}, 10)`}>
+                  {isSelected && (
+                    <polygon points={points} fill="none" stroke="#0d9488" strokeWidth="2.5" style={{ filter: 'drop-shadow(0 0 8px rgba(13,148,136,0.5))' }} />
+                  )}
+                  <polygon points={points} fill={originalColor} stroke="#2c3e50" strokeWidth="1" className="plot-rect" />
+                  {plot.status === 'booked' && !isUtility && (
+                    <polygon points={points} fill="url(#booked-pattern)" stroke="#ef4444" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  {plot.status === 'blocked' && !isUtility && (
+                    <polygon points={points} fill="url(#blocked-pattern)" stroke="#f59e0b" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  <text x={xStart + 20} y={468} transform={`rotate(-90 ${xStart + 20} 468)`} className="plot-text" style={{ fill: isSelected ? '#000000' : '#ef5350', fontWeight: 'bold', fontSize: '9px', textAnchor: 'middle' }}>
+                    {plot.id}
+                  </text>
+                  {numId % 2 !== 0 && (
+                    <text x={xStart + 20} y={453} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>
+                  )}
+                  <text x={xStart + 20} y={485} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>
+                  <text x={xEnd - 6} y={468} transform={`rotate(-90 ${xEnd - 6} 468)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>35'</text>
+                </g>
+              );
+            }
+
+            if (plot.id === '106') {
+              const points = "1040,447 1078,447 1068,470 1091,470 1091,490 1040,490";
+              return (
+                <g key={plot.id} onClick={() => onSelectPlot(plot)} transform="translate(-120, 10)">
+                  {isSelected && (
+                    <polygon points={points} fill="none" stroke="#0d9488" strokeWidth="2.5" style={{ filter: 'drop-shadow(0 0 8px rgba(13,148,136,0.5))' }} />
+                  )}
+                  <polygon points={points} fill={originalColor} stroke="#2c3e50" strokeWidth="1" className="plot-rect" />
+                  {plot.status === 'booked' && !isUtility && (
+                    <polygon points={points} fill="url(#booked-pattern)" stroke="#ef4444" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  {plot.status === 'blocked' && !isUtility && (
+                    <polygon points={points} fill="url(#blocked-pattern)" stroke="#f59e0b" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  <text x={1056} y={468} transform="rotate(-90 1056 468)" className="plot-text" style={{ fill: isSelected ? '#000000' : '#ef5350', fontWeight: 'bold', fontSize: '9px', textAnchor: 'middle' }}>
+                    {plot.id}
+                  </text>
+                  <text x={1059} y={453} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>28'9"</text>
+                  <text x={1065} y={485} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>37'9"</text>
+                  <text x={1070} y={459} transform="rotate(66 1070 459)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>28'</text>
+                  <text x={1080} y={467} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>11'9"</text>
+                  <text x={1087} y={483} transform="rotate(-90 1087 483)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>12'6"</text>
+                </g>
+              );
+            }
+
+            if (plot.id === '123') {
+              const points = "650,410 680,410 680,447 640,447 640,420";
+              return (
+                <g key={plot.id} onClick={() => onSelectPlot(plot)} transform="translate(-80, 10)">
+                  {isSelected && (
+                    <polygon points={points} fill="none" stroke="#0d9488" strokeWidth="2.5" style={{ filter: 'drop-shadow(0 0 8px rgba(13,148,136,0.5))' }} />
+                  )}
+                  <polygon points={points} fill={originalColor} stroke="#2c3e50" strokeWidth="1" className="plot-rect" />
+                  {plot.status === 'booked' && !isUtility && (
+                    <polygon points={points} fill="url(#booked-pattern)" stroke="#ef4444" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  {plot.status === 'blocked' && !isUtility && (
+                    <polygon points={points} fill="url(#blocked-pattern)" stroke="#f59e0b" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  <text x={660} y={431} transform="rotate(-90 660 431)" className="plot-text" style={{ fill: isSelected ? '#000000' : '#ef5350', fontWeight: 'bold', fontSize: '9px', textAnchor: 'middle' }}>
+                    {plot.id}
+                  </text>
+                  <text x={646} y={431} transform="rotate(-90 646 431)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>35'</text>
+                  <text x={665} y={418} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>30'</text>
+                  <text x={660} y={442} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>30'</text>
+                </g>
+              );
+            }
+
+            if (numId >= 124 && numId <= 142) {
+              const idx = numId - 124;
+              const xStart = 680 + idx * 20;
+              const xEnd = xStart + 20;
+              const points = `${xStart},410 ${xEnd},410 ${xEnd},447 ${xStart},447`;
+              const tx = xStart >= 980 ? -120 : -80;
+              return (
+                <g key={plot.id} onClick={() => onSelectPlot(plot)} transform={`translate(${tx}, 10)`}>
+                  {isSelected && (
+                    <polygon points={points} fill="none" stroke="#0d9488" strokeWidth="2.5" style={{ filter: 'drop-shadow(0 0 8px rgba(13,148,136,0.5))' }} />
+                  )}
+                  <polygon points={points} fill={originalColor} stroke="#2c3e50" strokeWidth="1" className="plot-rect" />
+                  {plot.status === 'booked' && !isUtility && (
+                    <polygon points={points} fill="url(#booked-pattern)" stroke="#ef4444" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  {plot.status === 'blocked' && !isUtility && (
+                    <polygon points={points} fill="url(#blocked-pattern)" stroke="#f59e0b" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  <text x={xStart + 10} y={430} transform={`rotate(-90 ${xStart + 10} 430)`} className="plot-text" style={{ fill: isSelected ? '#000000' : '#ef5350', fontWeight: 'bold', fontSize: '8px', textAnchor: 'middle' }}>
+                    {plot.id}
+                  </text>
+                  <text x={xStart + 10} y={419} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6px', textAnchor: 'middle' }}>15'</text>
+                </g>
+              );
+            }
+
+            if (plot.id === '143') {
+              const points = "1060,410 1080,410 1078,447 1060,447";
+              return (
+                <g key={plot.id} onClick={() => onSelectPlot(plot)} transform="translate(-120, 10)">
+                  {isSelected && (
+                    <polygon points={points} fill="none" stroke="#0d9488" strokeWidth="2.5" style={{ filter: 'drop-shadow(0 0 8px rgba(13,148,136,0.5))' }} />
+                  )}
+                  <polygon points={points} fill={originalColor} stroke="#2c3e50" strokeWidth="1" className="plot-rect" />
+                  {plot.status === 'booked' && !isUtility && (
+                    <polygon points={points} fill="url(#booked-pattern)" stroke="#ef4444" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  {plot.status === 'blocked' && !isUtility && (
+                    <polygon points={points} fill="url(#blocked-pattern)" stroke="#f59e0b" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  <text x={1069} y={430} transform="rotate(-90 1069 430)" className="plot-text" style={{ fill: isSelected ? '#000000' : '#ef5350', fontWeight: 'bold', fontSize: '8px', textAnchor: 'middle' }}>
+                    {plot.id}
+                  </text>
+                  <text x={1070} y={419} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6px', textAnchor: 'middle' }}>15'</text>
+                  <text x={1069} y={442} className="plot-label-sub" style={{ fill: '#000000', fontSize: 6, textAnchor: 'middle' }}>13'6"</text>
+                </g>
+              );
+            }
+
+            if (plot.id === '144') {
+              const points = "1080,410 1093,410 1102,447 1078,447";
+              return (
+                <g key={plot.id} onClick={() => onSelectPlot(plot)} transform="translate(-120, 10)">
+                  {isSelected && (
+                    <polygon points={points} fill="none" stroke="#0d9488" strokeWidth="2.5" style={{ filter: 'drop-shadow(0 0 8px rgba(13,148,136,0.5))' }} />
+                  )}
+                  <polygon points={points} fill={originalColor} stroke="#2c3e50" strokeWidth="1" className="plot-rect" />
+                  {plot.status === 'booked' && !isUtility && (
+                    <polygon points={points} fill="url(#booked-pattern)" stroke="#ef4444" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  {plot.status === 'blocked' && !isUtility && (
+                    <polygon points={points} fill="url(#blocked-pattern)" stroke="#f59e0b" strokeWidth="1.5" pointerEvents="none" />
+                  )}
+                  <text x={1087} y={430} transform="rotate(-90 1087 430)" className="plot-text" style={{ fill: isSelected ? '#000000' : '#ef5350', fontWeight: 'bold', fontSize: '8px', textAnchor: 'middle' }}>
+                    {plot.id}
+                  </text>
+                  <text x={1086} y={419} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6px', textAnchor: 'middle' }}>15'</text>
+                  <text x={1090} y={442} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6px', textAnchor: 'middle' }}>15'</text>
+                </g>
+              );
+            }
+
+            const isL1L2Block = (numId >= 1 && numId <= 7) || (numId >= 16 && numId <= 31);
+            if (isL1L2Block) {
+              const ty = numId <= 7 ? -140 : -40;
+              let points = '';
+              let labels: React.ReactNode[] = [];
+              let textX = 0;
+              let textY = 0;
+
+              if (numId === 1) {
+                // Plot 1
+                points = "230.7,1040 280,1040 280,1110.7 240.3,1111.7";
+                textX = 258; textY = 1076;
+                labels.push(<text key="top" x={258} y={1052} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>37'</text>);
+                labels.push(<text key="bottom" x={258} y={1106} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>29'9"</text>);
+                labels.push(<text key="left" x={231} y={1082} transform="rotate(-82 231 1082)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>53'9"</text>);
+                labels.push(<text key="right" x={276} y={1076} transform="rotate(-90 276 1076)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>53'</text>);
+              } else if (numId >= 2 && numId <= 6) {
+                // Plots 2 to 6
+                const xStart = 280 + (numId - 2) * 40;
+                const xEnd = xStart + 40;
+
+                const heightsTyped: Record<number, { left: number; right: number; hRight: string }> = {
+                  2: { left: 1110.7, right: 1108.0, hRight: "51'" },
+                  3: { left: 1108.0, right: 1106.3, hRight: "49'9\"" },
+                  4: { left: 1106.3, right: 1104.3, hRight: "48'3\"" },
+                  5: { left: 1104.3, right: 1102.0, hRight: "46'6\"" },
+                  6: { left: 1102.0, right: 1100.3, hRight: "45'3\"" }
+                };
+                const hData = heightsTyped[numId];
+                points = `${xStart},1040 ${xEnd},1040 ${xEnd},${hData.right} ${xStart},${hData.left}`;
+                textX = xStart + 20; textY = 1070;
+
+                labels.push(<text key="top" x={xStart + 20} y={1052} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                const bDim = numId === 2 ? "30'3\"" : "30'";
+                labels.push(<text key="bottom" x={xStart + 20} y={Math.min(hData.left, hData.right) - 4} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>{bDim}</text>);
+                labels.push(<text key="right" x={xEnd - 4} y={1070} transform={`rotate(-90 ${xEnd - 4} 1070)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>{hData.hRight}</text>);
+              } else if (numId === 7) {
+                // Plot 7 (slanted top-right chamfer)
+                points = "480,1040 512,1040 520,1048 520,1097.7 480,1100.3";
+                textX = 500; textY = 1070;
+                labels.push(<text key="top" x={496} y={1052} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                labels.push(<text key="bottom" x={500} y={1093} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'3"</text>);
+                labels.push(<text key="right" x={516} y={1075} transform="rotate(-90 516 1075)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>43'3"</text>);
+              }
+
+              // Block L2 Top Row (24 to 31)
+              else if (numId === 24) {
+                points = "211.7,820 240,820 240,860 220,860";
+                textX = 227; textY = 840;
+                labels.push(<text key="top" x={227} y={832} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6px', textAnchor: 'middle' }}>21'3"</text>);
+                labels.push(<text key="bottom" x={230} y={856} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6px', textAnchor: 'middle' }}>15'</text>);
+                labels.push(<text key="left" x={212} y={840} transform="rotate(-77 212 840)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6px', textAnchor: 'middle' }}>41'</text>);
+              } else if (numId >= 25 && numId <= 30) {
+                const xStart = 240 + (numId - 25) * 40;
+                const xEnd = xStart + 40;
+                points = `${xStart},820 ${xEnd},820 ${xEnd},860 ${xStart},860`;
+                textX = xStart + 20; textY = 840;
+                labels.push(<text key="top" x={xStart + 20} y={832} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                labels.push(<text key="bottom" x={xStart + 20} y={856} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                labels.push(<text key="left" x={xStart + 4} y={840} transform={`rotate(-90 ${xStart + 4} 840)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6px', textAnchor: 'middle' }}>41'</text>);
+              } else if (numId === 31) {
+                // chamfered top-right corner
+                points = "480,820 512,820 520,828 520,860 480,860";
+                textX = 500; textY = 840;
+                labels.push(<text key="top" x={496} y={832} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                labels.push(<text key="bottom" x={500} y={856} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                labels.push(<text key="right" x={516} y={845} transform="rotate(-90 516 845)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6px', textAnchor: 'middle' }}>41'</text>);
+              }
+
+              // Block L2 Bottom Row (16 to 23)
+              else if (numId === 23) {
+                points = "220,860 248,860 248,900 226.7,900";
+                textX = 235; textY = 880;
+                labels.push(<text key="top" x={235} y={868} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6px', textAnchor: 'middle' }}>21'</text>);
+                labels.push(<text key="bottom" x={237} y={896} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6px', textAnchor: 'middle' }}>16'</text>);
+                labels.push(<text key="left" x={220} y={880} transform="rotate(-80 220 880)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6px', textAnchor: 'middle' }}>41'</text>);
+              } else if (numId === 22) {
+                points = "248,860 280,860 280,900 248,900";
+                textX = 264; textY = 880;
+                labels.push(<text key="bottom" x={264} y={896} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>24'</text>);
+                labels.push(<text key="left" x={252} y={880} transform="rotate(-90 252 880)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6px', textAnchor: 'middle' }}>41'</text>);
+              } else if (numId >= 17 && numId <= 21) {
+                const idx = numId - 17;
+                const xStart = 280 + idx * 40;
+                const xEnd = xStart + 40;
+                points = `${xStart},860 ${xEnd},860 ${xEnd},900 ${xStart},900`;
+                textX = xStart + 20; textY = 880;
+                labels.push(<text key="bottom" x={xStart + 20} y={896} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                labels.push(<text key="left" x={xStart + 4} y={880} transform={`rotate(-90 ${xStart + 4} 880)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6px', textAnchor: 'middle' }}>41'</text>);
+              } else if (numId === 16) {
+                // chamfered bottom-right corner
+                points = "480,860 520,860 520,892 512,900 480,900";
+                textX = 500; textY = 880;
+                labels.push(<text key="bottom" x={496} y={896} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                labels.push(<text key="right" x={516} y={876} transform="rotate(-90 516 876)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6px', textAnchor: 'middle' }}>41'</text>);
+              }
+
+              return (
+                <g key={plot.id} onClick={() => onSelectPlot(plot)} transform={`translate(0, ${ty})`}>
+                  {isSelected && (
+                    <polygon
+                      points={points}
+                      fill="none"
+                      stroke="#0d9488"
+                      strokeWidth="2.5"
+                      style={{ filter: 'drop-shadow(0 0 8px rgba(13,148,136,0.5))' }}
+                    />
+                  )}
+                  <polygon
+                    points={points}
+                    fill={originalColor}
+                    stroke="#2c3e50"
+                    strokeWidth="1"
+                    className="plot-rect"
+                  />
+                  {plot.status === 'booked' && !isUtility && (
+                    <polygon
+                      points={points}
+                      fill="url(#booked-pattern)"
+                      stroke="#ef4444"
+                      strokeWidth="1.5"
+                      pointerEvents="none"
+                    />
+                  )}
+                  {plot.status === 'blocked' && !isUtility && (
+                    <polygon
+                      points={points}
+                      fill="url(#blocked-pattern)"
+                      stroke="#f59e0b"
+                      strokeWidth="1.5"
+                      pointerEvents="none"
+                    />
+                  )}
+                  <text
+                    x={textX}
+                    y={textY}
+                    transform={`rotate(-90 ${textX} ${textY})`}
+                    className="plot-text"
+                    style={{
+                      fill: isSelected ? '#000000' : '#ef5350', // Bold Red text
+                      fontWeight: 'bold',
+                      fontSize: '11px',
+                      textAnchor: 'middle'
+                    }}
+                  >
+                    {plot.id}
+                  </text>
+                  {labels}
+                </g>
+              );
+            }
+
+            const isR1R2R3Block = (numId >= 8 && numId <= 15) || (numId >= 32 && numId <= 38);
+            if (isR1R2R3Block) {
+              const ty = numId <= 9 ? -140 : -40;
+              let points = '';
+              let labels: React.ReactNode[] = [];
+              let textX = 0;
+              let textY = 0;
+
+              // Block R1 (8, 9)
+              if (numId === 8) {
+                points = "640,1040 686,1040 686,1094 640,1095.3";
+                textX = 663; textY = 1068;
+                labels.push(<text key="top" x={663} y={1052} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>34'6"</text>);
+                labels.push(<text key="bottom" x={663} y={1090} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>34'6"</text>);
+                labels.push(<text key="left" x={646} y={1068} transform="rotate(-90 646 1068)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>41'6"</text>);
+                labels.push(<text key="right" x={680} y={1068} transform="rotate(-90 680 1068)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>40'6"</text>);
+              } else if (numId === 9) {
+                points = "686,1040 721.7,1040 721.7,1091 686,1094";
+                textX = 704; textY = 1068;
+                labels.push(<text key="top" x={704} y={1052} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>26'9"</text>);
+                labels.push(<text key="bottom" x={704} y={1086} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>26'9"</text>);
+                labels.push(<text key="right" x={716} y={1068} transform="rotate(-90 716 1068)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>38'3"</text>);
+              }
+
+              // Block R2 (10 to 15)
+              else if (numId === 15) {
+                points = "640,860 680,860 680,900 640,900";
+                textX = 660; textY = 880;
+                labels.push(<text key="bottom" x={660} y={896} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                labels.push(<text key="left" x={646} y={880} transform="rotate(-90 646 880)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>41'</text>);
+              } else if (numId === 14) {
+                points = "680,860 720,860 720,900 680,900";
+                textX = 700; textY = 880;
+                labels.push(<text key="bottom" x={700} y={896} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                labels.push(<text key="left" x={686} y={880} transform="rotate(-90 686 880)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>41'</text>);
+              } else if (numId === 13) {
+                points = "720,860 760,860 760,900 720,900";
+                textX = 740; textY = 880;
+                labels.push(<text key="bottom" x={740} y={896} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                labels.push(<text key="left" x={726} y={880} transform="rotate(-90 726 880)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>41'</text>);
+              } else if (numId === 12) {
+                points = "760,860 790.7,860 790.7,900 760,900";
+                textX = 775; textY = 880;
+                labels.push(<text key="bottom" x={775} y={896} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>23'</text>);
+                labels.push(<text key="left" x={766} y={880} transform="rotate(-90 766 880)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>41'</text>);
+              } else if (numId === 11) {
+                points = "790.7,860 821.3,860 821.3,900 790.7,900";
+                textX = 806; textY = 880;
+                labels.push(<text key="bottom" x={806} y={896} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>23'</text>);
+                labels.push(<text key="left" x={796} y={880} transform="rotate(-90 796 880)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>41'</text>);
+              } else if (numId === 10) {
+                points = "821.3,860 852,860 852,900 821.3,900";
+                textX = 836; textY = 880;
+                labels.push(<text key="bottom" x={836} y={896} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>23'</text>);
+                labels.push(<text key="left" x={827} y={880} transform="rotate(-90 827 880)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>41'</text>);
+              }
+
+              // Block R3 (32 to 38)
+              else if (numId === 32) {
+                points = "640,820 680,820 680,860 640,860";
+                textX = 660; textY = 840;
+                labels.push(<text key="top" x={660} y={832} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                labels.push(<text key="bottom" x={660} y={856} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                labels.push(<text key="left" x={646} y={840} transform="rotate(-90 646 840)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>41'</text>);
+              } else if (numId === 33) {
+                points = "680,820 720,820 720,860 680,860";
+                textX = 700; textY = 840;
+                labels.push(<text key="top" x={700} y={832} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                labels.push(<text key="left" x={686} y={840} transform="rotate(-90 686 840)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>41'</text>);
+              } else if (numId === 34) {
+                points = "720,820 760,820 760,860 720,860";
+                textX = 740; textY = 840;
+                labels.push(<text key="top" x={740} y={832} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                labels.push(<text key="left" x={726} y={840} transform="rotate(-90 726 840)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>41'</text>);
+              } else if (numId === 35) {
+                points = "760,820 790.7,820 790.7,860 760,860";
+                textX = 775; textY = 840;
+                labels.push(<text key="top" x={775} y={832} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>23'</text>);
+                labels.push(<text key="left" x={766} y={840} transform="rotate(-90 766 840)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>41'</text>);
+              } else if (numId === 36) {
+                points = "790.7,820 821.3,820 821.3,860 790.7,860";
+                textX = 806; textY = 840;
+                labels.push(<text key="top" x={806} y={832} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>23'</text>);
+                labels.push(<text key="left" x={796} y={840} transform="rotate(-90 796 840)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>41'</text>);
+              } else if (numId === 37) {
+                points = "821.3,820 852,820 852,860 821.3,860";
+                textX = 836; textY = 840;
+                labels.push(<text key="top" x={836} y={832} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>23'</text>);
+                labels.push(<text key="left" x={827} y={840} transform="rotate(-90 827 840)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>41'</text>);
+              } else if (numId === 38) {
+                points = "852,820 938,820 931,850 852,853.3";
+                textX = 890; textY = 835;
+                labels.push(<text key="top" x={895} y={832} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>64'6"</text>);
+                labels.push(<text key="bottom" x={891} y={848} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>59'3"</text>);
+                labels.push(<text key="left" x={847} y={837} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>25'</text>);
+                labels.push(<text key="right" x={939} y={835} transform="rotate(-90 939 835)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>22'6"</text>);
+              }
+
+              return (
+                <g key={plot.id} onClick={() => onSelectPlot(plot)} transform={`translate(-80, ${ty})`}>
+                  {isSelected && (
+                    <polygon
+                      points={points}
+                      fill="none"
+                      stroke="#0d9488"
+                      strokeWidth="2.5"
+                      style={{ filter: 'drop-shadow(0 0 8px rgba(13,148,136,0.5))' }}
+                    />
+                  )}
+                  <polygon
+                    points={points}
+                    fill={originalColor}
+                    stroke="#2c3e50"
+                    strokeWidth="1"
+                    className="plot-rect"
+                  />
+                  {plot.status === 'booked' && !isUtility && (
+                    <polygon
+                      points={points}
+                      fill="url(#booked-pattern)"
+                      stroke="#ef4444"
+                      strokeWidth="1.5"
+                      pointerEvents="none"
+                    />
+                  )}
+                  {plot.status === 'blocked' && !isUtility && (
+                    <polygon
+                      points={points}
+                      fill="url(#blocked-pattern)"
+                      stroke="#f59e0b"
+                      strokeWidth="1.5"
+                      pointerEvents="none"
+                    />
+                  )}
+                  <text
+                    x={textX}
+                    y={textY}
+                    transform={`rotate(-90 ${textX} ${textY})`}
+                    className="plot-text"
+                    style={{
+                      fill: isSelected ? '#000000' : '#ef5350', // Bold Red text
+                      fontWeight: 'bold',
+                      fontSize: '11px',
+                      textAnchor: 'middle'
+                    }}
+                  >
+                    {plot.id}
+                  </text>
+                  {labels}
+                </g>
+              );
+            }
+
+            const isL3L4L5Block = (numId >= 47 && numId <= 62) || (numId >= 82 && numId <= 93) || (numId >= 117 && numId <= 122);
+            if (isL3L4L5Block) {
+              const ty = (numId >= 47 && numId <= 62) ? -10 : 10;
+              let points = '';
+              let labels: React.ReactNode[] = [];
+              let textX = 0;
+              let textY = 0;
+
+              // Block L5
+              if (numId === 117) {
+                points = "480,450 520,450 520,490 480,490";
+                textX = 500; textY = 470;
+                labels.push(<text key="bottom" x={500} y={486} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                labels.push(<text key="right" x={517} y={470} transform="rotate(-90 517 470)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>35'</text>);
+              } else if (numId === 118) {
+                points = "440,450 480,450 480,490 440,490";
+                textX = 460; textY = 470;
+                labels.push(<text key="bottom" x={460} y={486} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                labels.push(<text key="right" x={477} y={470} transform="rotate(-90 477 470)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>35'</text>);
+              } else if (numId === 119) {
+                points = "370,490 440,490 440,450 386.7,450";
+                textX = 413; textY = 470;
+                labels.push(<text key="bottom" x={405} y={486} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>53'6"</text>);
+                labels.push(<text key="left" x={375} y={475} transform="rotate(-68 375 475)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>16'3"</text>);
+              } else if (numId === 120) {
+                points = "386.7,450 440,450 440,410 410,410 385,425";
+                textX = 418; textY = 430;
+                labels.push(<text key="top" x={425} y={418} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                labels.push(<text key="bottom" x={413} y={446} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>55'3"</text>);
+                labels.push(<text key="slant" x={395} y={418} transform="rotate(-31 395 418)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>24'6"</text>);
+                labels.push(<text key="right" x={437} y={430} transform="rotate(-90 437 430)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>35'</text>);
+                labels.push(<text key="height-label" x={400} y={435} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>48'3"</text>);
+              } else if (numId === 121) {
+                points = "440,410 480,410 480,450 440,450";
+                textX = 460; textY = 430;
+                labels.push(<text key="top" x={460} y={418} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                labels.push(<text key="bottom" x={460} y={446} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                labels.push(<text key="right" x={477} y={430} transform="rotate(-90 477 430)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>35'</text>);
+              } else if (numId === 122) {
+                points = "480,410 520,410 520,450 480,450";
+                textX = 500; textY = 430;
+                labels.push(<text key="top" x={500} y={418} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                labels.push(<text key="bottom" x={500} y={446} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                labels.push(<text key="right" x={517} y={430} transform="rotate(-90 517 430)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>35'</text>);
+              }
+
+              // Block L4
+              else if (numId === 82) {
+                points = "480,570 520,570 520,610 480,610";
+                textX = 500; textY = 590;
+                labels.push(<text key="bottom" x={500} y={606} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                labels.push(<text key="right" x={517} y={590} transform="rotate(-90 517 590)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>41'</text>);
+              } else if (numId >= 83 && numId <= 86) {
+                const idx = numId - 82;
+                const xStart = 480 - idx * 40;
+                const xEnd = xStart + 40;
+                points = `${xStart},570 ${xEnd},570 ${xEnd},610 ${xStart},610`;
+                textX = xStart + 20; textY = 590;
+                labels.push(<text key="bottom" x={xStart + 20} y={606} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                if (numId % 2 !== 0) {
+                  labels.push(<text key="top" x={xStart + 20} y={578} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                }
+                labels.push(<text key="right" x={xEnd - 3} y={590} transform={`rotate(-90 ${xEnd - 3} 590)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>41'</text>);
+              } else if (numId === 87) {
+                points = "280,536 320,538 320,610 280,610";
+                textX = 300; textY = 590;
+                labels.push(<text key="bottom" x={300} y={606} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                labels.push(<text key="top" x={300} y={544} transform="rotate(2.8 300 544)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                labels.push(<text key="right" x={317} y={580} transform="rotate(-90 317 580)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>54'3"</text>);
+                labels.push(<text key="left" x={286} y={580} transform="rotate(-90 286 580)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>55'3"</text>);
+              } else if (numId === 88) {
+                points = "237.3,526 280,536 280,610 237.3,610";
+                textX = 258; textY = 590;
+                labels.push(<text key="bottom" x={258} y={606} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                labels.push(<text key="top" x={258} y={538} transform="rotate(13 258 538)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>32'</text>);
+                labels.push(<text key="left" x={243} y={580} transform="rotate(-90 243 580)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>63'</text>);
+              } else if (numId === 89) {
+                points = "179,610 237.3,610 237.3,526 205.3,534 165,595";
+                textX = 210; textY = 580;
+                labels.push(<text key="bottom" x={208} y={606} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>43'9"</text>);
+                labels.push(<text key="top" x={221} y={536} transform="rotate(14 221 536)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>24'</text>);
+                labels.push(<text key="slant-long" x={180} y={560} transform="rotate(-57 180 560)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>50'6"</text>);
+                labels.push(<text key="slant-short" x={166} y={604} transform="rotate(-47 166 604)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>13'6"</text>);
+              } else if (numId === 90) {
+                points = "346.7,530 400,530 400,570 320,570 320,538";
+                textX = 360; textY = 550;
+                labels.push(<text key="top" x={373} y={538} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>40'</text>);
+                labels.push(<text key="bottom" x={360} y={566} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>60'</text>);
+                labels.push(<text key="right" x={397} y={550} transform="rotate(-90 397 550)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>41'</text>);
+                labels.push(<text key="left-shared" x={326} y={554} transform="rotate(-90 326 554)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>13'3"</text>);
+                labels.push(<text key="left-slant" x={330} y={538} transform="rotate(-30 330 538)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>32'</text>);
+              } else if (numId >= 91 && numId <= 93) {
+                const idx = numId - 91;
+                const xStart = 400 + idx * 40;
+                const xEnd = xStart + 40;
+                points = `${xStart},530 ${xEnd},530 ${xEnd},570 ${xStart},570`;
+                textX = xStart + 20; textY = 550;
+                labels.push(<text key="top" x={xStart + 20} y={538} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                labels.push(<text key="bottom" x={xStart + 20} y={566} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                labels.push(<text key="right" x={xEnd - 3} y={550} transform={`rotate(-90 ${xEnd - 3} 550)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>41'</text>);
+              }
+
+              // Block L3
+              else if (numId === 47) {
+                points = "480,710 520,710 520,750 480,750";
+                textX = 500; textY = 730;
+                labels.push(<text key="bottom" x={500} y={746} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                labels.push(<text key="right" x={517} y={730} transform="rotate(-90 517 730)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>41'</text>);
+              } else if (numId >= 48 && numId <= 52) {
+                const idx = numId - 47;
+                const xStart = 480 - idx * 40;
+                const xEnd = xStart + 40;
+                points = `${xStart},710 ${xEnd},710 ${xEnd},750 ${xStart},750`;
+                textX = xStart + 20; textY = 730;
+                labels.push(<text key="bottom" x={xStart + 20} y={746} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                if (numId % 2 !== 0) {
+                  labels.push(<text key="top" x={xStart + 20} y={718} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                }
+                labels.push(<text key="right" x={xEnd - 3} y={730} transform={`rotate(-90 ${xEnd - 3} 730)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>41'</text>);
+              } else if (numId === 53) {
+                points = "248,710 280,710 280,750 248,750";
+                textX = 264; textY = 730;
+                labels.push(<text key="top" x={264} y={718} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>24'</text>);
+                labels.push(<text key="bottom" x={264} y={746} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>24'</text>);
+                labels.push(<text key="right" x={277} y={730} transform="rotate(-90 277 730)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>41'</text>);
+              } else if (numId === 54) {
+                points = "207.3,740 212.3,750 248,750 248,710 221.3,710";
+                textX = 230; textY = 730;
+                labels.push(<text key="bottom" x={230} y={746} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'6"</text>);
+                labels.push(<text key="slant-left" x={210} y={726} transform="rotate(-70 210 726)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>26'3"</text>);
+              } else if (numId === 55) {
+                points = "198.3,670 248,670 248,710 221.3,710";
+                textX = 223; textY = 690;
+                labels.push(<text key="top" x={223} y={678} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>37'3"</text>);
+                labels.push(<text key="bottom" x={234} y={706} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>20'</text>);
+                labels.push(<text key="right" x={245} y={690} transform="rotate(-90 245 690)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>41'</text>);
+                labels.push(<text key="left-slant" x={205} y={690} transform="rotate(-57 205 690)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>44'6"</text>);
+              } else if (numId === 56) {
+                points = "248,670 280,670 280,710 248,710";
+                textX = 264; textY = 690;
+                labels.push(<text key="top" x={264} y={678} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>24'</text>);
+                labels.push(<text key="bottom" x={264} y={706} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>24'</text>);
+                labels.push(<text key="right" x={277} y={690} transform="rotate(-90 277 690)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>41'</text>);
+              } else if (numId >= 57 && numId <= 62) {
+                const idx = numId - 57;
+                const xStart = 280 + idx * 40;
+                const xEnd = xStart + 40;
+                points = `${xStart},670 ${xEnd},670 ${xEnd},710 ${xStart},710`;
+                textX = xStart + 20; textY = 690;
+                labels.push(<text key="top" x={xStart + 20} y={678} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                labels.push(<text key="bottom" x={xStart + 20} y={706} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                labels.push(<text key="right" x={xEnd - 3} y={690} transform={`rotate(-90 ${xEnd - 3} 690)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>41'</text>);
+              }
+
+              return (
+                <g key={plot.id} onClick={() => onSelectPlot(plot)} transform={`translate(0, ${ty})`}>
+                  {isSelected && (
+                    <polygon
+                      points={points}
+                      fill="none"
+                      stroke="#0d9488"
+                      strokeWidth="2.5"
+                      style={{ filter: 'drop-shadow(0 0 8px rgba(13,148,136,0.5))' }}
+                    />
+                  )}
+                  <polygon
+                    points={points}
+                    fill={originalColor}
+                    stroke="#2c3e50"
+                    strokeWidth="1"
+                    className="plot-rect"
+                  />
+                  {plot.status === 'booked' && !isUtility && (
+                    <polygon
+                      points={points}
+                      fill="url(#booked-pattern)"
+                      stroke="#ef4444"
+                      strokeWidth="1.5"
+                      pointerEvents="none"
+                    />
+                  )}
+                  {plot.status === 'blocked' && !isUtility && (
+                    <polygon
+                      points={points}
+                      fill="url(#blocked-pattern)"
+                      stroke="#f59e0b"
+                      strokeWidth="1.5"
+                      pointerEvents="none"
+                    />
+                  )}
+                  <text
+                    x={textX}
+                    y={textY}
+                    transform={`rotate(-90 ${textX} ${textY})`}
+                    className="plot-text"
+                    style={{
+                      fill: isSelected ? '#000000' : '#ef5350',
+                      fontWeight: 'bold',
+                      fontSize: '11px',
+                      textAnchor: 'middle'
+                    }}
+                  >
+                    {plot.id}
+                  </text>
+                  {labels}
+                </g>
+              );
+            }
+
+            const isR4R5Block = (numId >= 39 && numId <= 46) || (numId >= 63 && numId <= 71) || (numId >= 72 && numId <= 81) || (numId >= 94 && numId <= 104);
+            if (isR4R5Block) {
+              const isRow4 = (numId >= 39 && numId <= 46) || (numId >= 63 && numId <= 71);
+              const ty = isRow4 ? -10 : 10;
+              const tx = (numId === 72 || numId === 103 || numId === 104) ? -120 : -80;
+              let points = '';
+              let labels: React.ReactNode[] = [];
+              let textX = 0;
+              let textY = 0;
+
+              if (numId === 94) {
+                points = "650,530 680,530 680,570 640,570 640,540";
+                textX = 660; textY = 550;
+                labels.push(<text key="top" x={665} y={538} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                labels.push(<text key="bottom" x={660} y={566} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                labels.push(<text key="left" x={646} y={555} transform="rotate(-90 646 555)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>41'</text>);
+              } else if (numId >= 95 && numId <= 103) {
+                const idx = numId - 94;
+                const xStart = 640 + idx * 40;
+                const xEnd = xStart + 40;
+                points = `${xStart},530 ${xEnd},530 ${xEnd},570 ${xStart},570`;
+                textX = xStart + 20; textY = 550;
+                labels.push(<text key="top" x={xStart + 20} y={538} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                labels.push(<text key="bottom" x={xStart + 20} y={566} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                labels.push(<text key="right" x={xEnd - 3} y={550} transform={`rotate(-90 ${xEnd - 3} 550)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>41'</text>);
+              } else if (numId === 104) {
+                points = "1040,530 1086.7,530 1053.3,570 1040,570";
+                textX = 1052; textY = 550;
+                labels.push(<text key="top" x={1063} y={538} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>35'</text>);
+                labels.push(<text key="bottom" x={1046} y={566} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>10'</text>);
+                labels.push(<text key="right" x={1073} y={548} transform="rotate(-50 1073 548)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>48'3"</text>);
+              } else if (numId === 81) {
+                points = "640,570 680,570 680,610 650,610 640,600";
+                textX = 660; textY = 590;
+                labels.push(<text key="bottom" x={665} y={606} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                labels.push(<text key="left" x={646} y={588} transform="rotate(-90 646 588)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>41'</text>);
+              } else if (numId >= 73 && numId <= 80) {
+                const idx = 81 - numId;
+                const xStart = 640 + idx * 40;
+                const xEnd = xStart + 40;
+                points = `${xStart},570 ${xEnd},570 ${xEnd},610 ${xStart},610`;
+                textX = xStart + 20; textY = 590;
+                labels.push(<text key="bottom" x={xStart + 20} y={606} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                if (numId % 2 !== 0) {
+                  labels.push(<text key="top" x={xStart + 20} y={578} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                }
+                labels.push(<text key="right" x={xEnd - 3} y={590} transform={`rotate(-90 ${xEnd - 3} 590)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>41'</text>);
+              } else if (numId === 72) {
+                points = "1000,570 1053.5,570 1022.7,610 1000,610";
+                textX = 1018; textY = 590;
+                labels.push(<text key="bottom" x={1010} y={606} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>17'</text>);
+                labels.push(<text key="top" x={1032} y={578} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>40'6"</text>);
+                labels.push(<text key="right" x={1042} y={588} transform="rotate(-52 1042 588)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>27'9"</text>);
+              } else if (numId === 63) {
+                points = "650,670 680,670 680,710 640,710 640,680";
+                textX = 660; textY = 690;
+                labels.push(<text key="top" x={665} y={678} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                labels.push(<text key="bottom" x={660} y={706} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                labels.push(<text key="left" x={646} y={695} transform="rotate(-90 646 695)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>41'</text>);
+              } else if (numId >= 64 && numId <= 70) {
+                const idx = numId - 63;
+                const xStart = 640 + idx * 40;
+                const xEnd = xStart + 40;
+                points = `${xStart},670 ${xEnd},670 ${xEnd},710 ${xStart},710`;
+                textX = xStart + 20; textY = 690;
+                labels.push(<text key="top" x={xStart + 20} y={678} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                labels.push(<text key="bottom" x={xStart + 20} y={706} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                labels.push(<text key="right" x={xEnd - 3} y={690} transform={`rotate(-90 ${xEnd - 3} 690)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>41'</text>);
+              } else if (numId === 71) {
+                points = "960,670 1005.3,670 978.3,710 960,710";
+                textX = 974; textY = 690;
+                labels.push(<text key="top" x={982} y={678} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>34'</text>);
+                labels.push(<text key="bottom" x={968} y={706} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>13'9"</text>);
+                labels.push(<text key="right" x={995} y={688} transform="rotate(-56 995 688)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>45'3"</text>);
+              } else if (numId === 46) {
+                points = "640,710 680,710 680,750 650,750 640,740";
+                textX = 660; textY = 730;
+                labels.push(<text key="bottom" x={665} y={746} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                labels.push(<text key="left" x={646} y={728} transform="rotate(-90 646 728)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>41'</text>);
+              } else if (numId >= 41 && numId <= 45) {
+                const idx = 46 - numId;
+                const xStart = 640 + idx * 40;
+                const xEnd = xStart + 40;
+                points = `${xStart},710 ${xEnd},710 ${xEnd},750 ${xStart},750`;
+                textX = xStart + 20; textY = 730;
+                labels.push(<text key="bottom" x={xStart + 20} y={746} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                if (numId % 2 !== 0) {
+                  labels.push(<text key="top" x={xStart + 20} y={718} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>30'</text>);
+                }
+                labels.push(<text key="right" x={xEnd - 3} y={730} transform={`rotate(-90 ${xEnd - 3} 730)`} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>41'</text>);
+              } else if (numId === 40) {
+                points = "880,710 916,710 916,750 880,750";
+                textX = 898; textY = 730;
+                labels.push(<text key="top" x={898} y={718} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>27'</text>);
+                labels.push(<text key="bottom" x={898} y={746} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>27'</text>);
+                labels.push(<text key="right" x={913} y={730} transform="rotate(-90 913 730)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px' }}>41'</text>);
+              } else if (numId === 39) {
+                points = "916,710 978.3,710 951.7,750 916,750";
+                textX = 938; textY = 730;
+                labels.push(<text key="top" x={947} y={718} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>46'9"</text>);
+                labels.push(<text key="bottom" x={933} y={746} className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>26'9"</text>);
+                labels.push(<text key="right" x={968} y={728} transform="rotate(-56 968 728)" className="plot-label-sub" style={{ fill: '#000000', fontSize: '6.5px', textAnchor: 'middle' }}>46'</text>);
+              }
+
+              return (
+                <g key={plot.id} onClick={() => onSelectPlot(plot)} transform={`translate(${tx}, ${ty})`}>
+                  {isSelected && (
+                    <polygon
+                      points={points}
+                      fill="none"
+                      stroke="#0d9488"
+                      strokeWidth="2.5"
+                      style={{ filter: 'drop-shadow(0 0 8px rgba(13,148,136,0.5))' }}
+                    />
+                  )}
+                  <polygon
+                    points={points}
+                    fill={originalColor}
+                    stroke="#2c3e50"
+                    strokeWidth="1"
+                    className="plot-rect"
+                  />
+                  {plot.status === 'booked' && !isUtility && (
+                    <polygon
+                      points={points}
+                      fill="url(#booked-pattern)"
+                      stroke="#ef4444"
+                      strokeWidth="1.5"
+                      pointerEvents="none"
+                    />
+                  )}
+                  {plot.status === 'blocked' && !isUtility && (
+                    <polygon
+                      points={points}
+                      fill="url(#blocked-pattern)"
+                      stroke="#f59e0b"
+                      strokeWidth="1.5"
+                      pointerEvents="none"
+                    />
+                  )}
+                  <text
+                    x={textX}
+                    y={textY}
+                    transform={`rotate(-90 ${textX} ${textY})`}
+                    className="plot-text"
+                    style={{
+                      fill: isSelected ? '#000000' : '#ef5350',
+                      fontWeight: 'bold',
+                      fontSize: '11px',
+                      textAnchor: 'middle'
+                    }}
+                  >
+                    {plot.id}
+                  </text>
+                  {labels}
+                </g>
+              );
+            }
+
+            return (
+              <g key={plot.id} onClick={() => onSelectPlot(plot)}>
+                {/* Outer glow/highlight if selected */}
+                {isSelected && (
+                  <rect
+                    x={coords.x - 3}
+                    y={coords.y - 3}
+                    width={coords.w + 6}
+                    height={coords.h + 6}
+                    fill="none"
+                    stroke="#0d9488"
+                    strokeWidth="2.5"
+                    rx="3"
+                    style={{ filter: 'drop-shadow(0 0 8px rgba(13,148,136,0.5))' }}
+                  />
+                )}
+
+                {/* The Base Plot shape with original layout color */}
+                <rect
+                  x={coords.x}
+                  y={coords.y}
+                  width={coords.w}
+                  height={coords.h}
+                  rx="1"
+                  fill={originalColor}
+                  stroke="#2c3e50"
+                  strokeWidth="1"
+                  className="plot-rect"
+                />
+
+                {/* Booking / Blocked Overlay Patterns */}
+                {plot.status === 'booked' && !isUtility && (
+                  <rect
+                    x={coords.x}
+                    y={coords.y}
+                    width={coords.w}
+                    height={coords.h}
+                    rx="1"
+                    fill="url(#booked-pattern)"
+                    stroke="#ef4444"
+                    strokeWidth="1.5"
+                    pointerEvents="none"
+                  />
+                )}
+
+                {plot.status === 'blocked' && !isUtility && (
+                  <rect
+                    x={coords.x}
+                    y={coords.y}
+                    width={coords.w}
+                    height={coords.h}
+                    rx="1"
+                    fill="url(#blocked-pattern)"
+                    stroke="#f59e0b"
+                    strokeWidth="1.5"
+                    pointerEvents="none"
+                  />
+                )}
+
+                {/* Plot Text Label */}
+                <text
+                  x={coords.x + coords.w / 2}
+                  y={coords.y + coords.h / 2}
+                  className={`plot-text ${isUtility ? 'utility-label' : ''}`}
+                  style={{
+                    fill: isSelected ? '#000000' : (isUtility ? '#1e293b' : '#ef5350'),
+                    fontWeight: 'bold',
+                    fontSize: coords.w < 25 ? '7px' : '9px'
+                  }}
+                >
+                  {plot.id}
+                </text>
+
+                {/* Extra layout dimensions details inside the plot */}
+                {coords.w >= 45 && coords.h >= 40 && !isUtility && (
+                  <text
+                    x={coords.x + coords.w / 2}
+                    y={coords.y + coords.h / 2 + 13}
+                    className="plot-label-sub"
+                  >
+                    {plot.dimensions.split(' ')[0]}
+                  </text>
+                )}
+              </g>
+            );
+          })}
+        </g>
+
+        {/* ======================================================== */}
+        {/* 5. METADATA AND GRAPHICS (DTCP, COMPASS)                  */}
+        {/* ======================================================== */}
+        <g>
+          {/* DTCP Stamp (Moved to Right Empty Space next to Plan card) */}
+          <g transform="translate(860, 85)" className="compass-rose">
+            <polygon points="50,0 100,30 100,90 50,120 0,90 0,30" fill="#ffffff" stroke="#ef5350" strokeWidth="2" />
+            <circle cx="50" cy="60" r="38" fill="none" stroke="#ef5350" strokeWidth="1.5" strokeDasharray="4,2" />
+            <text x="50" y="42" className="fill-[#ef5350] font-display font-black text-[12px]" textAnchor="middle">DTCP</text>
+            <text x="50" y="58" className="fill-[#ef5350] font-sans font-bold text-[8px]" textAnchor="middle">APPROVED</text>
+            <text x="50" y="70" className="fill-[#ef5350] font-sans font-extrabold text-[8px]" textAnchor="middle">69/2026</text>
+            <text x="50" y="82" className="fill-[#ef5350] font-sans font-semibold text-[7px]" textAnchor="middle">LAYOUT</text>
+          </g>
+
+          {/* Compass Rose */}
+          <g transform="translate(1340, 680)">
+            {/* Outer compass ring */}
+            <circle cx="50" cy="50" r="45" fill="#ffffff" stroke="#2c3e50" strokeWidth="1.5" />
+            <circle cx="50" cy="50" r="40" fill="none" stroke="#2c3e50" strokeWidth="1" strokeDasharray="3, 3" opacity="0.3" />
+
+            {/* Compass needles */}
+            <polygon points="50,12 55,50 50,45" fill="#ef4444" /> {/* North */}
+            <polygon points="50,12 45,50 50,45" fill="#b91c1c" />
+
+            <polygon points="50,88 55,50 50,55" fill="#2c3e50" /> {/* South */}
+            <polygon points="50,88 45,50 50,55" fill="#1e293b" />
+
+            <polygon points="88,50 50,55 50,50" fill="#2c3e50" /> {/* East */}
+            <polygon points="88,50 50,45 50,50" fill="#1e293b" />
+
+            <polygon points="12,50 50,55 50,50" fill="#2c3e50" /> {/* West */}
+            <polygon points="12,50 50,45 50,50" fill="#1e293b" />
+
+            {/* Text labels */}
+            <text x="50" y="8" className="fill-[#ef4444] font-display font-black text-[11px]" textAnchor="middle">N</text>
+            <text x="50" y="98" className="fill-[#2c3e50] font-display font-bold text-[9px]" textAnchor="middle">S</text>
+            <text x="96" y="53" className="fill-[#2c3e50] font-display font-bold text-[9px]">E</text>
+            <text x="4" y="53" className="fill-[#2c3e50] font-display font-bold text-[9px]">W</text>
+          </g>
+        </g>
+      </svg>
+    </div>
+  );
+};
